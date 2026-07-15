@@ -41,6 +41,8 @@ zero ou un fichier de domaine, utilise `allowed_files_read`.
 
 Guide complet : `docs/INTEGRATION.md`.
 
+Presentation equipe : ouvrir `docs/presentation.html` dans un navigateur.
+
 ## Sorties
 
 Chaque cas produit dans `evals/results/<case-id>/` :
