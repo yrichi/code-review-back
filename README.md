@@ -55,7 +55,7 @@ Chaque cas produit dans `evals/results/<case-id>/` :
 Le gate exige, pour les cas non `should_fail`, que le juge, la validation
 deterministe et la selectivite passent tous.
 
-Le fichier `evals/results/FINDINGS.md` contient la calibration factuelle du premier run reel.
+Le fichier `evals/results/FINDINGS.md` contient la calibration factuelle du dernier run reel documente.
 
 ## Limites connues
 

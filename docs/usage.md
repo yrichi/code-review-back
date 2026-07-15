@@ -7,7 +7,7 @@
 - `make setup` : verifie le CLI et prepare `evals/results/`.
 - `make lint` : verifie la coherence minimale des regles.
 - `make run` : execute review, extraction de trace et juge pour chaque cas.
-- `make gate` : lance les cas puis applique le gate.
+- `make gate` : applique le gate sur les artefacts deja produits.
 - `make context` : affiche uniquement selectivite et tokens.
 - `make clean` : vide `evals/results/`.
 
@@ -35,6 +35,28 @@ Evals: ...
 3. Documenter la decision dans `decisions/ledger.md`.
 4. Ajouter au moins un cas sous `evals/cases/`.
 5. Lancer `make eval`.
+
+## Format d'un expected.yml
+
+```yaml
+schema_version: 1
+case_id: C1-example
+expected_findings:
+  - rule_id: SRV-001
+    file: src/main/java/demo/UserService.java
+    message_contains: ["service"]
+forbidden_findings:
+  - rule_id: CTL-001
+max_findings: 1
+context_expectations:
+  exact_files_read:
+    - rules/services.rules.md
+  forbidden_files_read:
+    - rules/controller.rules.md
+```
+
+Pour un vrai negatif ou le skill peut lire zero ou un fichier de domaine, utiliser
+`allowed_files_read` a la place de `exact_files_read`.
 
 ## Garde-fous d'evaluation
 
