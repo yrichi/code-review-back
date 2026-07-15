@@ -1,0 +1,18 @@
+# CAS DE CONTROLE : ce cas DOIT echouer.
+# Si le gate le rapporte PASS, le harnais ne mesure rien -> le squelette est invalide.
+should_fail: true
+schema_version: 1
+case_id: C3-must-fail
+mode: standard
+expected_findings:
+  - rule_id: SRV-999
+    file: src/main/java/demo/UserManager.java
+    message_contains: ["inexistant"]
+forbidden_findings:
+  - rule_id: CTL-001
+max_findings: 1
+context_expectations:
+  exact_files_read:
+    - rules/services.rules.md
+  forbidden_files_read:
+    - rules/controller.rules.md

@@ -1,0 +1,5 @@
+evals/results/*
+!evals/results/.gitkeep
+!evals/results/FINDINGS.md
+
+.DS_Store

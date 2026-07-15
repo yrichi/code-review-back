@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "required": ["case_id", "result", "reasons"],
+  "properties": {
+    "case_id": { "type": "string" },
+    "result": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "matched": { "type": "array", "items": { "type": "string" } },
+    "missed": { "type": "array", "items": { "type": "string" } },
+    "forbidden_violated": { "type": "array", "items": { "type": "string" } },
+    "reasons": { "type": "string" }
+  },
+  "additionalProperties": false
+}

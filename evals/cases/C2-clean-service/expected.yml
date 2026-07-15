@@ -1,0 +1,13 @@
+schema_version: 1
+case_id: C2-clean-service
+mode: standard
+expected_findings: []
+forbidden_findings:
+  - rule_id: SRV-001
+  - rule_id: CTL-001
+max_findings: 0
+context_expectations:
+  exact_files_read:
+    - rules/services.rules.md
+  forbidden_files_read:
+    - rules/controller.rules.md
