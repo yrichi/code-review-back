@@ -7,4 +7,4 @@ Risque: couplage presentation/metier et tests plus fragiles.
 Correctif: deplacer la logique dans un service applicatif.
 Exemple a signaler: `@PostMapping` puis calcul ou mutation metier directement dans le controller.
 Exemple a ne pas signaler: controller qui delegue a un service.
-Evals: C4-controller-logic
+Evals: C4-controller-logic, C7-medium-controller-clean

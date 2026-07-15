@@ -1,0 +1,19 @@
+schema_version: 1
+case_id: C8-medium-security-admin
+mode: standard
+expected_findings:
+  - rule_id: SEC-001
+    file: src/main/java/demo/web/AdminOwnerController.java
+    message_contains: ["acces"]
+forbidden_findings:
+  - rule_id: CTL-001
+  - rule_id: DCP-001
+  - rule_id: SRV-001
+max_findings: 4
+context_expectations:
+  exact_files_read:
+    - rules/security.rules.md
+  forbidden_files_read:
+    - rules/controller.rules.md
+    - rules/rgpd-trace-dcp.rules.md
+    - rules/services.rules.md

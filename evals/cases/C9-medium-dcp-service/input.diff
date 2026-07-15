@@ -1,0 +1,80 @@
+diff --git a/src/main/java/demo/security/LoginAuditWriter.java b/src/main/java/demo/security/LoginAuditWriter.java
+new file mode 100644
+index 0000000..9999999
+--- /dev/null
++++ b/src/main/java/demo/security/LoginAuditWriter.java
+@@ -0,0 +1,91 @@
++package demo.security;
++
++import java.time.Clock;
++import java.time.Instant;
++import java.util.Locale;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.stereotype.Component;
++
++@Component
++public class LoginAuditWriter {
++
++  private static final Logger log = LoggerFactory.getLogger(LoginAuditWriter.class);
++
++  private final Clock clock;
++
++  public LoginAuditWriter(Clock clock) {
++    this.clock = clock;
++  }
++
++  public void recordSuccess(LoginAttempt attempt) {
++    AuditEvent event =
++        new AuditEvent(
++            attempt.userId(),
++            attempt.email(),
++            normalizeIp(attempt.ipAddress()),
++            "LOGIN_SUCCESS",
++            Instant.now(clock));
++    write(event);
++  }
++
++  public void recordFailure(LoginAttempt attempt, String reason) {
++    AuditEvent event =
++        new AuditEvent(
++            attempt.userId(),
++            attempt.email(),
++            normalizeIp(attempt.ipAddress()),
++            "LOGIN_FAILURE",
++            Instant.now(clock));
++    log.warn(
++        "Login failed userId={} email={} reason={}",
++        event.userId(),
++        event.email(),
++        normalizeReason(reason));
++  }
++
++  private void write(AuditEvent event) {
++    log.info(
++        "Login audit userId={} action={} ip={} at={}",
++        event.userId(),
++        event.action(),
++        event.ipAddress(),
++        event.createdAt());
++  }
++
++  private String normalizeIp(String ipAddress) {
++    if (ipAddress == null || ipAddress.isBlank()) {
++      return "unknown";
++    }
++    return ipAddress.trim();
++  }
++
++  private String normalizeReason(String reason) {
++    if (reason == null || reason.isBlank()) {
++      return "unknown";
++    }
++    return reason.trim().toUpperCase(Locale.ROOT);
++  }
++
++  public record LoginAttempt(Long userId, String email, String ipAddress) {}
++
++  public record AuditEvent(
++      Long userId, String email, String ipAddress, String action, Instant createdAt) {}
++}

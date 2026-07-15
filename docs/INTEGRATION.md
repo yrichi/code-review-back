@@ -62,8 +62,12 @@ context_expectations:
 Champs de contexte supportes :
 
 - `exact_files_read` : egalite stricte apres retrait de `allowed_context_files`.
+- `allowed_files_read` : liste bornee de fichiers acceptes; le cas passe si les
+  fichiers lus sont un sous-ensemble de cette liste. Utile pour les vrais
+  negatifs ou le skill peut lire zero fichier ou seulement le fichier de domaine.
 - `exact_reference_files` : alias de `exact_files_read`, utile si tu veux garder
   le vocabulaire "references".
+- `allowed_reference_files` : alias de `allowed_files_read`.
 - `exact_rule_files` : alias historique conserve pour le squelette demo.
 - `forbidden_files_read` : fichiers qui ne doivent jamais etre lus.
 - `forbidden_reference_files` : alias de `forbidden_files_read`.

@@ -1,10 +1,10 @@
 schema_version: 1
-case_id: C6-dcp-log-sensitive
+case_id: C9-medium-dcp-service
 mode: standard
 expected_findings:
   - rule_id: DCP-001
-    file: src/main/java/demo/LoginAuditLogger.java
-    message_contains: ["log"]
+    file: src/main/java/demo/security/LoginAuditWriter.java
+    message_contains: ["email"]
 forbidden_findings:
   - rule_id: SRV-001
   - rule_id: CTL-001

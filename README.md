@@ -36,7 +36,8 @@ Le harnais suit les conventions de ce repo sans fichier de configuration :
 Pour un skill base sur references, place les documents sous le repertoire du
 skill ou sous `rules/`, declare les cas sous `evals/cases/`, puis exprime les attentes de contexte dans
 `expected.yml` avec `context_expectations.exact_files_read` et
-`forbidden_files_read`.
+`forbidden_files_read`. Pour un vrai negatif ou le skill peut legitimement lire
+zero ou un fichier de domaine, utilise `allowed_files_read`.
 
 Guide complet : `docs/INTEGRATION.md`.
 

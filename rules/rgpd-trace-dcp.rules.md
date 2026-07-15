@@ -7,4 +7,4 @@ Risque: fuite de donnees dans les journaux.
 Correctif: masquer, pseudonymiser ou supprimer la donnee tracee.
 Exemple a signaler: `log.info("password={}", password)` ou `log.info("email={}", email)`.
 Exemple a ne pas signaler: `log.info("userId={}", userId)` si `userId` est un identifiant technique non personnel.
-Evals: C6-dcp-log-sensitive
+Evals: C6-dcp-log-sensitive, C9-medium-dcp-service

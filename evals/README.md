@@ -14,6 +14,8 @@ Ce dossier contient le harnais local d'evaluation du skill `code-review-back`.
 
 Chaque cas doit declarer `context_expectations`. Une absence de mesure de
 selectivite est consideree comme un echec, pas comme un succes implicite.
+Utilise `exact_files_read` pour les cas stricts et `allowed_files_read` pour les
+vrais negatifs ou zero fichier de regle lu reste acceptable.
 
 Le gate combine :
 

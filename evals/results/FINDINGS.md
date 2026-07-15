@@ -27,19 +27,23 @@
 ## Tokens
 - `output_tokens` trouves via `assistant.message.data.outputTokens`.
 - `input_tokens` non trouves dans la surface observee.
-- Mesures du run Java courant :
-  - C1-services-violation : input `null`, output `726`.
-  - C2-clean-service : input `null`, output `852`.
-  - C3-must-fail : input `null`, output `742`.
-  - C4-controller-logic : input `null`, output `952`.
-  - C5-security-missing-auth : input `null`, output `1022`.
-  - C6-dcp-log-sensitive : input `null`, output `838`.
+- Mesures du dernier run Java medium :
+  - C1-services-violation : input `null`, output `707`.
+  - C2-clean-service : input `null`, output `634`.
+  - C3-must-fail : input `null`, output `798`.
+  - C4-controller-logic : input `null`, output `982`.
+  - C5-security-missing-auth : input `null`, output `999`.
+  - C6-dcp-log-sensitive : input `null`, output `704`.
+  - C7-medium-controller-clean : input `null`, output `1238`.
+  - C8-medium-security-admin : input `null`, output `1287`.
+  - C9-medium-dcp-service : input `null`, output `1339`.
 
 ## Fichiers lus
 - Fichiers lus extraits depuis `tool.execution_start` avec `toolName: "view"` et `data.arguments.path`.
 - Les chemins absolus de la trace sont normalises en chemins relatifs.
 - `files_read_all` conserve tous les chemins lus via `view`.
 - `files_read` conserve le sous-ensemble exploitable pour les references de regles et le skill.
+- Si la trace JSON est presente mais qu'aucun appel `view` n'apparait, `files_read` vaut maintenant `[]` au lieu de `null`.
 - C1-services-violation a lu exactement :
   - `rules/services.rules.md`
 - C1-services-violation a aussi lu le contexte de skill autorise :
@@ -54,7 +58,11 @@
 - C4-controller-logic : `PASS`.
 - C5-security-missing-auth : `PASS`.
 - C6-dcp-log-sensitive : `PASS`.
+- C7-medium-controller-clean : `PASS`.
+- C8-medium-security-admin : `PASS`.
+- C9-medium-dcp-service : `PASS`.
 - Le gate ignore les ouvertures de repertoire observees dans `files_read_all` et compare uniquement les fichiers reels.
+- Le gate supporte `allowed_files_read` pour les vrais negatifs ou le skill peut legitimement lire zero ou un fichier de regle borne.
 - Aucun fichier de regle interdit n'a ete observe dans le run courant.
 
 ## Gate
@@ -64,10 +72,19 @@
 - C4-controller-logic : verdict juge `PASS`.
 - C5-security-missing-auth : verdict juge `PASS`.
 - C6-dcp-log-sensitive : verdict juge `PASS`.
+- C7-medium-controller-clean : verdict juge `PASS`.
+- C8-medium-security-admin : verdict juge `PASS`.
+- C9-medium-dcp-service : verdict juge `PASS`.
 - Le gate applique correctement `should_fail: true` et rapporte `PASS: echec attendu observe`.
 - Le gate combine maintenant verdict LLM + validation deterministe + selectivite.
 - Resultat final observe :
-  `make gate` retourne `0` avec les six cas en `PASS`.
+  `make gate` retourne `0` avec les neuf cas en `PASS`.
+
+## Enseignements des diffs medium
+- Les classes completes augmentent naturellement le nombre de findings sur une meme regle : C8 produit 4 findings `SEC-001`, C9 produit 2 findings `DCP-001`.
+- Les fragments `message_contains` doivent viser le sens stable (`log`, `acces`, `service`) plutot qu'un mot exact que le modele peut traduire (`password` vs `mot de passe`).
+- Un vrai negatif peut charger aucun fichier de regle ou seulement le fichier de domaine pour verifier l'abstention. `allowed_files_read` couvre ce cas sans autoriser de fichiers hors sujet.
+- Un controller de type `OwnerController` avec POST/PUT a ete juge trop ambigu pour un vrai negatif: il declenche naturellement `SEC-001`. Le cas clean utilise donc un controller de catalogue public en lecture seule.
 
 ## Consequences pour le vrai harnais
 - Transposable tel quel : structure `rules/`, point d'entree `skills/code-review-back/SKILL.md`, cas sous `evals/cases/`, traces sous `evals/results/`.

@@ -7,4 +7,4 @@ Risque: exposition non autorisee.
 Correctif: ajouter ou documenter le controle d'acces.
 Exemple a signaler: `@DeleteMapping("/users/{id}")` sans annotation de securite.
 Exemple a ne pas signaler: `@PreAuthorize("hasRole('ADMIN')")` sur le endpoint.
-Evals: C5-security-missing-auth
+Evals: C5-security-missing-auth, C8-medium-security-admin

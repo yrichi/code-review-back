@@ -60,9 +60,10 @@ ruby -rjson -ryaml -e '
     selectivity = "FAIL: context_expectations absent"
     ctx_node = expected["context_expectations"] || {}
     ctx = ctx_node["exact_files_read"] || ctx_node["exact_reference_files"] || ctx_node["exact_rule_files"]
+    allowed_files = ctx_node["allowed_files_read"] || ctx_node["allowed_reference_files"]
     forbidden_files = ctx_node["forbidden_files_read"] || ctx_node["forbidden_reference_files"] || []
     allowed_context = ctx_node["allowed_context_files"] || ["#{skill_dir}", "#{skill_dir}/SKILL.md"]
-    if ctx || !forbidden_files.empty?
+    if ctx || allowed_files || !forbidden_files.empty?
       files = metrics["files_read_all"] || metrics["files_read"]
       if files.is_a?(Array)
         normalized = files.map { |f| f.sub(%r{^.*#{Regexp.escape(skill_dir)}/}, "#{skill_dir}/") }.uniq.sort
@@ -71,6 +72,10 @@ ruby -rjson -ryaml -e '
         if ctx
           want = ctx.sort
           selectivity = (comparable == want && violations.empty?) ? "PASS" : "FAIL: attendu #{want.inspect}, observe #{comparable.inspect}, interdits #{violations.inspect}"
+        elsif allowed_files
+          allowed = allowed_files.sort
+          extra = comparable - allowed
+          selectivity = (extra.empty? && violations.empty?) ? "PASS" : "FAIL: autorise #{allowed.inspect}, observe #{comparable.inspect}, extra #{extra.inspect}, interdits #{violations.inspect}"
         else
           selectivity = violations.empty? ? "PASS" : "FAIL: fichiers interdits lus #{violations.inspect}"
         end

@@ -1,0 +1,90 @@
+diff --git a/src/main/java/demo/web/CatalogController.java b/src/main/java/demo/web/CatalogController.java
+new file mode 100644
+index 0000000..7777777
+--- /dev/null
++++ b/src/main/java/demo/web/CatalogController.java
+@@ -0,0 +1,89 @@
++package demo.web;
++
++import demo.application.CatalogQuery;
++import demo.application.dto.CatalogCategory;
++import demo.application.dto.CatalogItem;
++import demo.application.dto.CatalogPage;
++import java.math.BigDecimal;
++import java.util.List;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++@RestController
++@RequestMapping("/catalog")
++public class CatalogController {
++
++  private final CatalogQuery catalogQuery;
++
++  public CatalogController(CatalogQuery catalogQuery) {
++    this.catalogQuery = catalogQuery;
++  }
++
++  @GetMapping("/categories")
++  public ResponseEntity<List<CategoryResponse>> categories() {
++    List<CatalogCategory> categories = catalogQuery.findCategories();
++    return ResponseEntity.ok(categories.stream().map(this::toCategoryResponse).toList());
++  }
++
++  @GetMapping("/items")
++  public ResponseEntity<CatalogPageResponse> items(
++      @RequestParam(name = "category", required = false) String category,
++      @RequestParam(name = "page", defaultValue = "0") int page,
++      @RequestParam(name = "size", defaultValue = "20") int size) {
++    CatalogPage result = catalogQuery.findItems(category, page, size);
++    return ResponseEntity.ok(toPageResponse(result));
++  }
++
++  @GetMapping("/items/{itemId}")
++  public ResponseEntity<ItemResponse> item(@PathVariable String itemId) {
++    CatalogItem item = catalogQuery.getItem(itemId);
++    return ResponseEntity.ok(toItemResponse(item));
++  }
++
++  private CatalogPageResponse toPageResponse(CatalogPage page) {
++    List<ItemResponse> items = page.items().stream().map(this::toItemResponse).toList();
++    return new CatalogPageResponse(items, page.page(), page.size(), page.total());
++  }
++
++  private CategoryResponse toCategoryResponse(CatalogCategory category) {
++    return new CategoryResponse(category.code(), category.label(), category.displayOrder());
++  }
++
++  private ItemResponse toItemResponse(CatalogItem item) {
++    return new ItemResponse(
++        item.id(),
++        item.label(),
++        item.categoryCode(),
++        item.description(),
++        item.price(),
++        item.available());
++  }
++
++  public record CatalogPageResponse(
++      List<ItemResponse> items,
++      int page,
++      int size,
++      long total) {}
++
++  public record CategoryResponse(
++      String code,
++      String label,
++      int displayOrder) {}
++
++  public record ItemResponse(
++      String id,
++      String label,
++      String categoryCode,
++      String description,
++      BigDecimal price,
++      boolean available) {}
++}

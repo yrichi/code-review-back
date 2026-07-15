@@ -1,0 +1,83 @@
+diff --git a/src/main/java/demo/web/AdminOwnerController.java b/src/main/java/demo/web/AdminOwnerController.java
+new file mode 100644
+index 0000000..8888888
+--- /dev/null
++++ b/src/main/java/demo/web/AdminOwnerController.java
+@@ -0,0 +1,103 @@
++package demo.web;
++
++import demo.application.AdminOwnerService;
++import demo.application.dto.OwnerAuditEntry;
++import demo.application.dto.OwnerDetails;
++import demo.application.dto.OwnerMergeRequest;
++import jakarta.validation.Valid;
++import java.time.Instant;
++import java.util.List;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.DeleteMapping;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++@RestController
++@RequestMapping("/admin/owners")
++public class AdminOwnerController {
++
++  private final AdminOwnerService adminOwnerService;
++
++  public AdminOwnerController(AdminOwnerService adminOwnerService) {
++    this.adminOwnerService = adminOwnerService;
++  }
++
++  @GetMapping("/{ownerId}")
++  public ResponseEntity<AdminOwnerResponse> getOwner(@PathVariable Long ownerId) {
++    OwnerDetails details = adminOwnerService.getOwner(ownerId);
++    return ResponseEntity.ok(toResponse(details));
++  }
++
++  @GetMapping("/{ownerId}/audit")
++  public ResponseEntity<List<AuditResponse>> audit(@PathVariable Long ownerId) {
++    List<OwnerAuditEntry> entries = adminOwnerService.audit(ownerId);
++    return ResponseEntity.ok(entries.stream().map(this::toAuditResponse).toList());
++  }
++
++  @PostMapping("/{ownerId}/merge")
++  public ResponseEntity<AdminOwnerResponse> merge(
++      @PathVariable Long ownerId, @Valid @RequestBody OwnerMergeRequest request) {
++    OwnerDetails merged = adminOwnerService.merge(ownerId, request.targetOwnerId());
++    return ResponseEntity.ok(toResponse(merged));
++  }
++
++  @DeleteMapping("/{ownerId}")
++  public ResponseEntity<Void> deleteOwner(@PathVariable Long ownerId) {
++    adminOwnerService.delete(ownerId);
++    return ResponseEntity.noContent().build();
++  }
++
++  private AdminOwnerResponse toResponse(OwnerDetails details) {
++    return new AdminOwnerResponse(
++        details.id(),
++        details.firstName(),
++        details.lastName(),
++        details.city(),
++        details.petNames(),
++        details.updatedAt());
++  }
++
++  private AuditResponse toAuditResponse(OwnerAuditEntry entry) {
++    return new AuditResponse(entry.actor(), entry.action(), entry.createdAt());
++  }
++
++  public record AdminOwnerResponse(
++      Long id,
++      String firstName,
++      String lastName,
++      String city,
++      List<String> petNames,
++      Instant updatedAt) {}
++
++  public record AuditResponse(String actor, String action, Instant createdAt) {}
++}

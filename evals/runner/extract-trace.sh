@@ -97,17 +97,18 @@ ruby -rjson -e '
       f.end_with?("SKILL.md")
   }.uniq.sort
 
+  trace_observed = !events.empty?
   metrics = {
     input_tokens: input_tokens,
     output_tokens: output_tokens,
-    files_read: files_reference.empty? ? nil : files_reference,
-    files_read_all: files_all.empty? ? nil : files_all,
+    files_read: files_reference.empty? && !trace_observed ? nil : files_reference,
+    files_read_all: files_all.empty? && !trace_observed ? nil : files_all,
     skill_activated: skill,
     notes: {
       input_tokens: input_tokens.nil? ? "NOT_FOUND: aucun champ input/prompt tokens observe dans trace.raw" : "observe dans #{token_sources.uniq.join(", ")}",
       output_tokens: output_tokens.nil? ? "NOT_FOUND: aucun champ output/completion tokens observe dans trace.raw" : "somme des assistant.message.data.outputTokens observes",
-      files_read: files_reference.empty? ? "NOT_FOUND: aucun fichier de reference exploitable observe dans les appels view" : "fichiers de reference derives depuis files_read_all",
-      files_read_all: files_all.empty? ? "NOT_FOUND: aucun tool.execution_start view avec arguments.path observe dans trace.raw" : "tous les chemins lus via tool.execution_start view arguments.path",
+      files_read: files_reference.empty? ? "aucun fichier de reference observe dans les appels view" : "fichiers de reference derives depuis files_read_all",
+      files_read_all: files_all.empty? ? "aucun tool.execution_start view avec arguments.path observe dans trace.raw" : "tous les chemins lus via tool.execution_start view arguments.path",
       skill_activated: skill.nil? ? "NOT_FOUND: aucune activation explicite de skill observee; presence textuelle non suffisante hors champs skill/tool/message" : "#{expected_skill_name} observe dans trace.raw"
     }
   }
