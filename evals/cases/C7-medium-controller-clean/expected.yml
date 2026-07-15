@@ -1,6 +1,5 @@
 schema_version: 1
 case_id: C7-medium-controller-clean
-mode: standard
 expected_findings: []
 forbidden_findings:
   - rule_id: CTL-001

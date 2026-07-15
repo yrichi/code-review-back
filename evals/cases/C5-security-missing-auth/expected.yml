@@ -1,6 +1,5 @@
 schema_version: 1
 case_id: C5-security-missing-auth
-mode: standard
 expected_findings:
   - rule_id: SEC-001
     file: src/main/java/demo/AdminUserController.java

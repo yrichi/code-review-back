@@ -1,6 +1,5 @@
 schema_version: 1
 case_id: C4-controller-logic
-mode: standard
 expected_findings:
   - rule_id: CTL-001
     file: src/main/java/demo/UserController.java

@@ -42,7 +42,6 @@ Schema pratique :
 ```yaml
 schema_version: 1
 case_id: R1-api-contract
-mode: standard
 expected_findings:
   - rule_id: API-001
     file: src/example.ts
@@ -55,27 +54,19 @@ context_expectations:
     - rules/services.rules.md
   forbidden_files_read:
     - rules/controller.rules.md
-  allowed_context_files:
-    - skills/code-review-back/SKILL.md
 ```
 
 Champs de contexte supportes :
 
-- `exact_files_read` : egalite stricte apres retrait de `allowed_context_files`.
+- `exact_files_read` : egalite stricte des fichiers de references lus.
 - `allowed_files_read` : liste bornee de fichiers acceptes; le cas passe si les
   fichiers lus sont un sous-ensemble de cette liste. Utile pour les vrais
   negatifs ou le skill peut lire zero fichier ou seulement le fichier de domaine.
-- `exact_reference_files` : alias de `exact_files_read`, utile si tu veux garder
-  le vocabulaire "references".
-- `allowed_reference_files` : alias de `allowed_files_read`.
-- `exact_rule_files` : alias historique conserve pour le squelette demo.
 - `forbidden_files_read` : fichiers qui ne doivent jamais etre lus.
-- `forbidden_reference_files` : alias de `forbidden_files_read`.
-- `allowed_context_files` : fichiers autorises en plus des references exactes.
-  Par defaut, le gate autorise `skills/code-review-back` et
-  `skills/code-review-back/SKILL.md`,
-  car le CLI peut exposer ou consulter le point d'entree du skill sans que cela
-  soit une reference metier chargee.
+
+Le gate autorise toujours le point d'entree du skill (`skills/code-review-back`
+et `skills/code-review-back/SKILL.md`) comme contexte technique. Ces chemins ne
+sont pas consideres comme des references metier chargees.
 
 ## 3. Ajouter un cas qui doit echouer
 

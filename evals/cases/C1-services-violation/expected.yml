@@ -1,6 +1,5 @@
 schema_version: 1
 case_id: C1-services-violation
-mode: standard
 expected_findings:
   - rule_id: SRV-001
     file: src/main/java/demo/UserManager.java

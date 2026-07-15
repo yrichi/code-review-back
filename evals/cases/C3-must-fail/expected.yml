@@ -3,7 +3,6 @@
 should_fail: true
 schema_version: 1
 case_id: C3-must-fail
-mode: standard
 expected_findings:
   - rule_id: SRV-999
     file: src/main/java/demo/UserManager.java

@@ -1,6 +1,5 @@
 schema_version: 1
 case_id: C9-medium-dcp-service
-mode: standard
 expected_findings:
   - rule_id: DCP-001
     file: src/main/java/demo/security/LoginAuditWriter.java

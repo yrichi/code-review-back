@@ -1,6 +1,5 @@
 schema_version: 1
 case_id: C2-clean-service
-mode: standard
 expected_findings: []
 forbidden_findings:
   - rule_id: SRV-001

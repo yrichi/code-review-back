@@ -59,10 +59,10 @@ ruby -rjson -ryaml -e '
 
     selectivity = "FAIL: context_expectations absent"
     ctx_node = expected["context_expectations"] || {}
-    ctx = ctx_node["exact_files_read"] || ctx_node["exact_reference_files"] || ctx_node["exact_rule_files"]
-    allowed_files = ctx_node["allowed_files_read"] || ctx_node["allowed_reference_files"]
-    forbidden_files = ctx_node["forbidden_files_read"] || ctx_node["forbidden_reference_files"] || []
-    allowed_context = ctx_node["allowed_context_files"] || ["#{skill_dir}", "#{skill_dir}/SKILL.md"]
+    ctx = ctx_node["exact_files_read"]
+    allowed_files = ctx_node["allowed_files_read"]
+    forbidden_files = ctx_node["forbidden_files_read"] || []
+    allowed_context = ["#{skill_dir}", "#{skill_dir}/SKILL.md"]
     if ctx || allowed_files || !forbidden_files.empty?
       files = metrics["files_read_all"] || metrics["files_read"]
       if files.is_a?(Array)

@@ -1,6 +1,5 @@
 schema_version: 1
 case_id: C6-dcp-log-sensitive
-mode: standard
 expected_findings:
   - rule_id: DCP-001
     file: src/main/java/demo/LoginAuditLogger.java
