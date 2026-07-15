@@ -1,0 +1,19 @@
+schema_version: 1
+case_id: C6-dcp-log-sensitive
+mode: standard
+expected_findings:
+  - rule_id: DCP-001
+    file: src/main/java/demo/LoginAuditLogger.java
+    message_contains: ["password"]
+forbidden_findings:
+  - rule_id: SRV-001
+  - rule_id: CTL-001
+  - rule_id: SEC-001
+max_findings: 2
+context_expectations:
+  exact_files_read:
+    - rules/rgpd-trace-dcp.rules.md
+  forbidden_files_read:
+    - rules/services.rules.md
+    - rules/controller.rules.md
+    - rules/security.rules.md

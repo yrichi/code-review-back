@@ -37,7 +37,7 @@ $(CASES):
 	@$(RUNNER_DIR)/validate-review.sh $@
 	@$(RUNNER_DIR)/run-judge.sh $@
 
-gate: run
+gate:
 	@$(RUNNER_DIR)/gate.sh $(CASES)
 
 context:

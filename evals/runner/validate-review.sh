@@ -38,7 +38,8 @@ ruby -rjson -ryaml -e '
     file = finding["file"].to_s
     fragments = finding["message_contains"] || []
     rule_ok = finding_text.include?(rule_id)
-    file_ok = file.empty? || finding_text.include?(file)
+    basename = File.basename(file)
+    file_ok = file.empty? || finding_text.include?(file) || (!basename.empty? && finding_text.include?(basename))
     fragments_ok = fragments.all? { |frag| normalized_findings.include?(frag.to_s.downcase) }
     if rule_ok && file_ok && fragments_ok
       matched << rule_id

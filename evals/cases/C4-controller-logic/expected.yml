@@ -1,0 +1,19 @@
+schema_version: 1
+case_id: C4-controller-logic
+mode: standard
+expected_findings:
+  - rule_id: CTL-001
+    file: src/main/java/demo/UserController.java
+    message_contains: ["service"]
+forbidden_findings:
+  - rule_id: SRV-001
+  - rule_id: SEC-001
+  - rule_id: DCP-001
+max_findings: 1
+context_expectations:
+  exact_files_read:
+    - rules/controller.rules.md
+  forbidden_files_read:
+    - rules/services.rules.md
+    - rules/security.rules.md
+    - rules/rgpd-trace-dcp.rules.md

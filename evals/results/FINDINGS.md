@@ -27,10 +27,13 @@
 ## Tokens
 - `output_tokens` trouves via `assistant.message.data.outputTokens`.
 - `input_tokens` non trouves dans la surface observee.
-- Mesures du run cible durci :
-  - C1-services-violation : input `null`, output `1122`.
-  - C2-clean-service : input `null`, output `790`.
-  - C3-must-fail : input `null`, output `1055`.
+- Mesures du run Java courant :
+  - C1-services-violation : input `null`, output `726`.
+  - C2-clean-service : input `null`, output `852`.
+  - C3-must-fail : input `null`, output `742`.
+  - C4-controller-logic : input `null`, output `952`.
+  - C5-security-missing-auth : input `null`, output `1022`.
+  - C6-dcp-log-sensitive : input `null`, output `838`.
 
 ## Fichiers lus
 - Fichiers lus extraits depuis `tool.execution_start` avec `toolName: "view"` et `data.arguments.path`.
@@ -48,17 +51,23 @@
 - C1-services-violation : `PASS`.
 - C2-clean-service : `PASS`.
 - C3-must-fail : `PASS`.
-- Attendu : `rules/services.rules.md`.
-- Observe : `rules/services.rules.md`.
-- Interdit : `rules/controller.rules.md`.
-- Violation interdite observee : aucune.
+- C4-controller-logic : `PASS`.
+- C5-security-missing-auth : `PASS`.
+- C6-dcp-log-sensitive : `PASS`.
+- Le gate ignore les ouvertures de repertoire observees dans `files_read_all` et compare uniquement les fichiers reels.
+- Aucun fichier de regle interdit n'a ete observe dans le run courant.
 
 ## Gate
 - C1-services-violation : verdict juge `PASS`.
 - C2-clean-service : verdict juge `PASS`.
 - C3-must-fail : verdict juge `FAIL`, `missed: ["SRV-999"]`.
+- C4-controller-logic : verdict juge `PASS`.
+- C5-security-missing-auth : verdict juge `PASS`.
+- C6-dcp-log-sensitive : verdict juge `PASS`.
 - Le gate applique correctement `should_fail: true` et rapporte `PASS: echec attendu observe`.
 - Le gate combine maintenant verdict LLM + validation deterministe + selectivite.
+- Resultat final observe :
+  `make gate` retourne `0` avec les six cas en `PASS`.
 
 ## Consequences pour le vrai harnais
 - Transposable tel quel : structure `rules/`, point d'entree `skills/code-review-back/SKILL.md`, cas sous `evals/cases/`, traces sous `evals/results/`.

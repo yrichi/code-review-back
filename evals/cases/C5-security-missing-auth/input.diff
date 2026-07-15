@@ -1,0 +1,24 @@
+diff --git a/src/main/java/demo/AdminUserController.java b/src/main/java/demo/AdminUserController.java
+new file mode 100644
+index 0000000..5555555
+--- /dev/null
++++ b/src/main/java/demo/AdminUserController.java
+@@ -0,0 +1,17 @@
++package demo;
++
++import org.springframework.web.bind.annotation.DeleteMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.RestController;
++
++@RestController
++public class AdminUserController {
++
++  private final UserService userService;
++
++  public AdminUserController(UserService userService) {
++    this.userService = userService;
++  }
++
++  @DeleteMapping("/admin/users/{id}")
++  public void deleteUser(@PathVariable Long id) { userService.delete(id); }
++}

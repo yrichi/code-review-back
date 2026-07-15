@@ -66,7 +66,7 @@ ruby -rjson -ryaml -e '
       files = metrics["files_read_all"] || metrics["files_read"]
       if files.is_a?(Array)
         normalized = files.map { |f| f.sub(%r{^.*#{Regexp.escape(skill_dir)}/}, "#{skill_dir}/") }.uniq.sort
-        comparable = normalized.reject { |f| allowed_context.include?(f) }.sort
+        comparable = normalized.reject { |f| allowed_context.include?(f) || File.directory?(File.join(root, f)) }.sort
         violations = forbidden_files & normalized
         if ctx
           want = ctx.sort
