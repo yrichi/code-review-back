@@ -6,6 +6,10 @@ CASES_DIR ?= evals/cases
 RESULTS_DIR ?= evals/results
 RUNNER_DIR ?= evals/runner
 CASES ?= $(notdir $(wildcard $(CASES_DIR)/*))
+# Nombre d'iterations par cas. 1 par defaut: le modele coute, et un run unique
+# suffit pour un diagnostic. Au-dela, le gate rapporte un ratio k/N au lieu d'un
+# PASS/FAIL, ce qui rend la variance du modele visible.
+RUNS ?= 1
 
 .PHONY: eval all setup lint run gate context case clean $(CASES)
 
@@ -32,10 +36,7 @@ lint:
 run: lint $(CASES)
 
 $(CASES):
-	@$(RUNNER_DIR)/run-review.sh $@
-	@$(RUNNER_DIR)/extract-trace.sh $@
-	@$(RUNNER_DIR)/validate-review.sh $@
-	@$(RUNNER_DIR)/run-judge.sh $@
+	@RUNS=$(RUNS) $(RUNNER_DIR)/run-case.sh $@
 
 gate:
 	@$(RUNNER_DIR)/gate.sh $(CASES)
@@ -46,10 +47,7 @@ context:
 case:
 	@test -n "$(CASE)" || { echo "usage: make case CASE=<case-id>"; exit 2; }
 	@$(RUNNER_DIR)/lint-rules.sh
-	@$(RUNNER_DIR)/run-review.sh $(CASE)
-	@$(RUNNER_DIR)/extract-trace.sh $(CASE)
-	@$(RUNNER_DIR)/validate-review.sh $(CASE)
-	@$(RUNNER_DIR)/run-judge.sh $(CASE)
+	@RUNS=$(RUNS) $(RUNNER_DIR)/run-case.sh $(CASE)
 	@$(RUNNER_DIR)/gate.sh $(CASE)
 
 clean:

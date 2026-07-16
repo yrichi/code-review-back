@@ -175,6 +175,55 @@ Mesures valides de ce run, avant epuisement :
   nommee. `max_findings: 1` aurait fait echouer le cas si elle etait sortie.
 - `C10-faux-pass` : echec attendu observe via le juge.
 
+## Epinglage du modele : possible, mais pas sur ce plan
+
+Enquete menee apres le run 2, CLI 1.0.71.
+
+Ce qui est documente par GitHub :
+
+- La selection manuelle de modele a ete **retiree des plans Free et Student** le
+  24 juin 2026. Sur ces plans, `auto` est le seul mode disponible.
+  <https://github.blog/changelog/2026-06-24-changes-to-model-selection-for-free-and-student-plans/>
+- Sur Pro et au-dessus, trois mecanismes existent, par precedence decroissante :
+  `--model <nom>`, la variable `COPILOT_MODEL`, puis la cle `"model"` de
+  `~/.copilot/settings.json`.
+  <https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference>
+- En Business/Enterprise, un admin peut desactiver des modeles au niveau
+  organisation, ce qui reproduit le meme blocage.
+  <https://docs.github.com/en/copilot/how-tos/copilot-cli/administer-copilot-cli-for-your-enterprise>
+- La liste des noms valides n'est pas publiee. La doc renvoie vers `copilot help`
+  et vers `/model` en interactif. Verifie : sur 1.0.71, `copilot help` ne liste
+  aucun nom, il affiche seulement `--model <model>  Set the AI model to use`.
+
+Ce qui est observe sur ce compte, les trois mecanismes etant inertes :
+
+- `--model <nom>` echoue avec `Error: Model "<nom>" from --model flag is not
+  available.` pour **tout** nom essaye (`gpt-5.4`, `gpt-5`, `gpt-5.1`,
+  `gpt-5-mini`, `gpt-5-codex`, `claude-sonnet-4`, `claude-sonnet-4.5`,
+  `claude-sonnet-4.6`, `claude-haiku-4.5`), avec et sans `--no-remote` — y
+  compris `gpt-5-mini`, que l'auto-routeur choisit a chaque run.
+- `COPILOT_MODEL=<nom>` est ignore silencieusement : meme une valeur invalide ne
+  produit aucune erreur et `session.auto_mode_resolved` se declenche quand meme.
+- La cle `"model"` de `~/.copilot/settings.json` est ignoree : avec
+  `"model": "claude-haiku-4.5"`, l'auto-routeur se declenche et resout vers
+  `gpt-5-mini`, et `model.call_failure` confirme que `gpt-5-mini` est bien le
+  modele appele.
+
+Ce n'est pas le quota qui cause ce rejet : `--model` echouait deja alors que le
+quota etait sain (le run 1 complet et les cas C11/C12 ont tourne apres ces
+tests). Le faisceau — rejet de tout nom + `402 quota_exceeded` — pointe vers un
+plan Free.
+
+Piege de methode rencontre : un premier test a montre `session.auto_mode_resolved`
+absent avec une cle `model` posee, ce qui ressemblait a un epinglage reussi.
+C'etait un faux positif d'un tirage unique. Pour conclure, il faut epingler un
+modele **different** de celui que l'auto-routeur choisit, et lire `data.model` sur
+`model.call_failure` — pas se fier a l'absence d'un evenement.
+
+Consequence : l'epinglage n'est pas un chantier de code, c'est un changement de
+plan. Passer en Copilot Pro, poser `"model"` dans `~/.copilot/settings.json`,
+verifier par la methode ci-dessus, puis re-etalonner toutes les mesures.
+
 ## Consequences pour le vrai harnais
 - Transposable tel quel : structure `rules/`, point d'entree `skills/code-review-back/SKILL.md`, cas sous `evals/cases/`, traces sous `evals/results/`.
 - Transposable tel quel : selectivite par `context_expectations.exact_files_read` ou `allowed_files_read`.
@@ -184,5 +233,11 @@ Mesures valides de ce run, avant epuisement :
 - A adapter : durcir `evals/judge.prompt.md` pour les criteres metier reels.
 - A resoudre en priorite : epingler le modele. Tant que le CLI route seul, le
   harnais compare des runs qui n'ont pas mesure le meme systeme. Aucune
-  conclusion de tendance n'est solide avant ca.
+  conclusion de tendance n'est solide avant ca. Ce n'est pas un chantier de
+  code : la selection manuelle est retiree des plans Free/Student depuis le
+  24 juin 2026. Voir « Epinglage du modele » plus haut.
+- En attendant, `RUNS=<k>` rend la variance visible : un cas instable sort en
+  `2/3` au lieu de se presenter comme un `PASS` ou un `FAIL` franc. C'est un
+  palliatif, pas un substitut a l'epinglage : ca mesure la dispersion sans
+  garantir qu'on mesure le meme modele d'un run a l'autre.
 - Limite actuelle : input tokens indisponibles avec la surface CLI observee.

@@ -9,6 +9,18 @@ et le versionnement suit SemVer.
 
 ### Ajoute (cadre d'evaluation)
 
+- `RUNS=<k>` (defaut 1) : joue chaque cas k fois via `evals/runner/run-case.sh`,
+  qui consigne une ligne par iteration dans `runs.jsonl`. Le gate agrege en
+  `k/N`; un cas n'est vert que si toutes les iterations mesurees passent, et les
+  iterations en panne sont comptees a part. A `RUNS=1`, la sortie et les
+  artefacts sont inchanges. Le modele etant stochastique, un PASS unique ne
+  distingue pas un cas stable d'un cas qui passe une fois sur trois.
+- `FINDINGS.md` documente l'enquete sur l'epinglage du modele : la selection
+  manuelle est retiree des plans Free/Student depuis le 24 juin 2026, et les
+  trois mecanismes (`--model`, `COPILOT_MODEL`, cle `model` de
+  `~/.copilot/settings.json`) sont inertes sur ce compte. L'epinglage est un
+  changement de plan, pas un chantier de code.
+
 - Distinction entre un echec mesure (`FAIL`) et une panne (`ERROR: non mesure`).
   `extract-trace.sh` remonte `run_error` depuis `session.error` et
   `model.call_failure`, `run-judge.sh` distingue « le juge rejette » de « le juge

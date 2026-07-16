@@ -3,6 +3,7 @@
 ## Modes
 
 - `make eval` : chemin nominal complet.
+- `make eval RUNS=<k>` : joue chaque cas `k` fois; le gate rapporte `k/N`. Defaut 1.
 - `make case CASE=<case-id>` : execute un seul cas et son gate.
 - `make setup` : verifie le CLI et prepare `evals/results/`.
 - `make lint` : verifie la coherence minimale des regles.
@@ -155,7 +156,7 @@ controle negatif mentirait exactement quand on en a le plus besoin.
 
 Un cas `ERROR` ne passe jamais le gate et ne satisfait jamais un `should_fail`.
 
-## Reproductibilite : le modele n'est pas epingle
+## Reproductibilite : epingler le modele
 
 Le CLI choisit seul le modele, par run. La trace expose l'arbitrage dans
 `session.auto_mode_resolved` :
@@ -165,14 +166,65 @@ Le CLI choisit seul le modele, par run. La trace expose l'arbitrage dans
  "candidateModels": ["gpt-5-mini", "claude-haiku-4.5"]}
 ```
 
-`--model` existe mais rejette tous les noms testes, y compris celui que le
-routeur vient de choisir. Deux `make eval` successifs peuvent donc mesurer deux
-modeles differents.
+Epingler le modele est possible et documente, mais **depend du plan Copilot** :
+GitHub a retire la selection manuelle de modele des plans **Free et Student** le
+24 juin 2026. Sur ces plans, le mode `auto` est le seul disponible.
 
-Consequence pratique : un ecart entre deux runs n'est pas forcement une
-regression du skill ou des regles. Verifier `chosenModel` dans la trace avant
-toute conclusion. Tant que ce point n'est pas resolu, le harnais mesure une
-photo, pas une tendance.
+Trois mecanismes existent, par ordre de precedence decroissante :
+
+| Mecanisme | Portee |
+| --- | --- |
+| `--model <nom>` | l'invocation |
+| `COPILOT_MODEL=<nom>` | la session |
+| cle `"model"` dans `~/.copilot/settings.json` | persistante |
+
+Sur un plan sans selection manuelle, les trois sont inertes : `--model` echoue
+avec `Error: Model "<nom>" from --model flag is not available.` pour **tout** nom,
+y compris celui que le routeur vient de choisir; `COPILOT_MODEL` et la cle
+`model` sont ignores silencieusement, l'auto-routeur se declenchant quand meme.
+
+Consequence tant que le modele n'est pas epingle : deux `make eval` successifs
+peuvent mesurer deux modeles differents. Un ecart entre deux runs n'est pas
+forcement une regression du skill. Verifier `chosenModel` dans la trace avant
+toute conclusion; le harnais mesure alors une photo, pas une tendance.
+
+Pour verifier qu'un epinglage est effectif, ne pas se fier a la seule absence de
+`session.auto_mode_resolved` : epingler un modele **different** de celui que
+l'auto-routeur choisit, et lire `data.model` sur les evenements
+`model.call_failure` ou `tool.execution_start`.
+
+## Repetition : voir la variance
+
+Le modele est stochastique : un `PASS` unique ne dit pas si un cas passe toujours
+ou une fois sur trois. `RUNS` joue chaque cas plusieurs fois.
+
+```sh
+make eval             # RUNS=1 par defaut
+make eval RUNS=5      # chaque cas joue 5 fois
+make case CASE=C1-services-violation RUNS=3
+```
+
+Par defaut `RUNS=1` : le comportement et la sortie sont ceux d'un run simple, un
+ratio `1/1` n'apprendrait rien. Au-dela, le gate rapporte `k/N` :
+
+```
+C1-services-violation | 2/3 FAIL: judge: AUCUN FINDING | 2/3 FAIL: attendu [...], observe []
+```
+
+Un cas n'est vert que si **toutes** les iterations mesurees passent : un cas
+instable doit se voir, `2/3` est une information et non un `PASS`. Les iterations
+non mesurees (panne) sont comptees a part et ne sont jamais comptees comme des
+succes.
+
+`evals/results/<case-id>/runs.jsonl` porte une ligne par iteration. Les autres
+artefacts du repertoire restent ceux de la derniere iteration : ils servent au
+diagnostic, pas au comptage.
+
+La repetition multiplie le cout en appels modele. Elle se cible :
+
+```sh
+make CASES="C1-services-violation C4-controller-logic" RUNS=5 eval
+```
 
 ## Cas de rejeu
 

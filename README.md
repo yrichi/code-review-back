@@ -37,10 +37,15 @@ vire au rouge si le juge la laisse passer.
 
 ```sh
 make eval
+make eval RUNS=5
 make case CASE=C1-services-violation
 make context
 make clean
 ```
+
+`RUNS` joue chaque cas plusieurs fois et fait rapporter au gate un ratio `k/N`
+au lieu d'un PASS/FAIL. Le modele etant stochastique, un run unique ne distingue
+pas un cas qui passe toujours d'un cas qui passe une fois sur trois. Defaut : 1.
 
 `make eval` est le chemin nominal : `setup`, `lint`, execution des cas, juge,
 validation deterministe, puis gate. Les cas sont decouverts automatiquement sous

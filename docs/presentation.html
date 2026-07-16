@@ -861,11 +861,18 @@ max_findings: 1</code></pre>
       <section id="limites">
         <h2>Limites assumees</h2>
         <ul>
-          <li><strong>Le modele n'est pas epingle.</strong> Le CLI le choisit seul par run
-            (<code>session.auto_mode_resolved</code> &rarr; <code>gpt-5-mini</code>), et <code>--model</code>
-            rejette tous les noms testes, y compris celui que le routeur vient de choisir.
-            Deux runs peuvent mesurer deux modeles differents : le harnais donne une photo, pas une tendance.
-            C'est aujourd'hui sa limite la plus serieuse, et elle n'est pas dans son code.</li>
+          <li><strong>Le modele n'est pas epingle, et ce n'est pas un chantier de code.</strong>
+            Le CLI le choisit seul par run (<code>session.auto_mode_resolved</code> &rarr;
+            <code>gpt-5-mini</code>). GitHub a retire la selection manuelle de modele des plans
+            <strong>Free et Student</strong> le 24 juin 2026 : sur ces plans, <code>--model</code> rejette
+            tout nom, <code>COPILOT_MODEL</code> et la cle <code>model</code> de
+            <code>~/.copilot/settings.json</code> sont ignores silencieusement. Deux runs peuvent donc
+            mesurer deux modeles differents : le harnais donne une photo, pas une tendance.
+            Debloquer ce point demande un plan Copilot Pro, pas une ligne de code.</li>
+          <li><strong>Palliatif : <code>RUNS=&lt;k&gt;</code>.</strong> Chaque cas est joue k fois et le gate
+            rapporte <code>k/N</code>. Un cas instable sort en <code>2/3</code> au lieu de se presenter
+            comme un PASS ou un FAIL franc. Ca mesure la dispersion; ca ne garantit pas qu'on mesure
+            le meme modele d'un run a l'autre.</li>
           <li>Les input tokens ne sont pas exposes par la surface CLI observee.</li>
           <li>Le juge LLM n'est pas l'unique oracle : le mecanique est verifie deterministiquement.</li>
           <li>Le juge reste non-deterministe : il peut produire des faux FAIL. C'est le prix du seul controle semantique disponible.</li>
