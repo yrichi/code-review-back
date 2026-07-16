@@ -328,7 +328,9 @@
       <nav>
         <a href="#objectif">Objectif</a>
         <a href="#architecture">Architecture</a>
+        <a href="#arborescence">Role des fichiers</a>
         <a href="#workflow">Workflow</a>
+        <a href="#deroule">Deroule concret</a>
         <a href="#contrat">Contrat d'un cas</a>
         <a href="#mesures">Mesures</a>
         <a href="#resultats">Resultats</a>
@@ -384,6 +386,87 @@ evals/
   results/</code></pre>
       </section>
 
+      <section id="arborescence">
+        <h2>Role de chaque fichier</h2>
+        <p>
+          Le repo se lit comme une chaine de responsabilites. Les regles sont la source de verite,
+          le skill route vers ces regles, les evals prouvent que le routage et la review tiennent.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Chemin</th>
+                <th>Role</th>
+                <th>Quand le toucher</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>skills/code-review-back/SKILL.md</code></td>
+                <td>Point d'entree du skill. Il decrit la mission, le format de sortie et le chargement selectif des references.</td>
+                <td>Quand un nouveau domaine de regle doit etre route ou quand le format de review change.</td>
+              </tr>
+              <tr>
+                <td><code>rules/index.md</code></td>
+                <td>Table d'index des regles : ID, titre, fichier, statut.</td>
+                <td>A chaque ajout, renommage, activation ou depreciation de regle.</td>
+              </tr>
+              <tr>
+                <td><code>rules/*.rules.md</code></td>
+                <td>Reference detaillee d'une regle : detection, exclusions, risque, correctif, exemples, evals.</td>
+                <td>Quand la norme projet evolue. C'est la source de verite normative.</td>
+              </tr>
+              <tr>
+                <td><code>decisions/ledger.md</code></td>
+                <td>Journal des decisions : regles acceptees, rejetees, remappage d'anciens IDs.</td>
+                <td>Quand une regle change de statut ou quand une decision doit rester tracable.</td>
+              </tr>
+              <tr>
+                <td><code>evals/cases/&lt;case-id&gt;/input.diff</code></td>
+                <td>Entree testee par le skill. Peut etre un petit diff ou une classe Java complete.</td>
+                <td>A chaque nouveau scenario de regression ou de validation d'une regle.</td>
+              </tr>
+              <tr>
+                <td><code>evals/cases/&lt;case-id&gt;/expected.yml</code></td>
+                <td>Oracle du cas : findings attendus, interdits, maximum, fichiers de references attendus ou interdits.</td>
+                <td>Quand l'objectif du cas ou la selectivite attendue change.</td>
+              </tr>
+              <tr>
+                <td><code>evals/runner/run-review.sh</code></td>
+                <td>Lance Copilot CLI en non-interactif, active le skill et capture <code>review.txt</code> et <code>trace.raw</code>.</td>
+                <td>Seulement si la surface CLI change.</td>
+              </tr>
+              <tr>
+                <td><code>evals/runner/extract-trace.sh</code></td>
+                <td>Extrait tokens, fichiers lus et activation du skill depuis la trace.</td>
+                <td>Quand le format de trace evolue ou qu'une nouvelle metrique devient observable.</td>
+              </tr>
+              <tr>
+                <td><code>evals/runner/validate-review.sh</code></td>
+                <td>Controle deterministe les invariants mecaniques de la review.</td>
+                <td>Quand le format de sortie attendu change.</td>
+              </tr>
+              <tr>
+                <td><code>evals/runner/run-judge.sh</code></td>
+                <td>Lance le juge LLM et exige un JSON parsable.</td>
+                <td>Quand le prompt ou le schema de juge change.</td>
+              </tr>
+              <tr>
+                <td><code>evals/runner/gate.sh</code></td>
+                <td>Agrege justesse, selectivite, tokens et cas <code>should_fail</code>.</td>
+                <td>Quand une nouvelle politique de blocage est decidee.</td>
+              </tr>
+              <tr>
+                <td><code>evals/results/FINDINGS.md</code></td>
+                <td>Compte rendu factuel de calibration : ce que le dernier run reel a revele.</td>
+                <td>Apres une campagne significative ou un changement de comportement observe.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="workflow">
         <h2>Workflow d'execution</h2>
         <p>La chaine teste la plomberie complete, pas seulement la qualite de la reponse finale.</p>
@@ -413,6 +496,80 @@ evals/
 make case CASE=C8-medium-security-admin
 make gate
 make context</code></pre>
+      </section>
+
+      <section id="deroule">
+        <h2>Deroule concret d'une analyse</h2>
+        <p>
+          Exemple avec <code>C8-medium-security-admin</code>, un controller admin complet qui doit declencher
+          <code>SEC-001</code> sans charger les references controller, service ou DCP.
+        </p>
+        <div class="grid two">
+          <div class="tile">
+            <h3>1. Lancer le cas</h3>
+            <pre><code>make case CASE=C8-medium-security-admin</code></pre>
+            <p>
+              Le runner cree <code>evals/results/C8-medium-security-admin/</code> et y depose tous les artefacts
+              utiles pour comprendre le resultat.
+            </p>
+          </div>
+          <div class="tile">
+            <h3>2. Lire la synthese gate</h3>
+            <pre><code>case | justesse | selectivite | tokens
+C8-medium-security-admin | PASS | PASS | in=null out=1287</code></pre>
+            <p>
+              Si une colonne echoue, on descend dans les artefacts du cas au lieu d'interpreter la sortie globale.
+            </p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Artefact</th>
+                <th>Question a se poser</th>
+                <th>Signal attendu</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>review.txt</code></td>
+                <td>Qu'a repondu le modele ? Les findings sont-ils lisibles et au bon format ?</td>
+                <td>Lignes <code>- [fichier:Lligne] ... (SEC-001)</code>, ou exactement <code>AUCUN FINDING</code>.</td>
+              </tr>
+              <tr>
+                <td><code>verdict.json</code></td>
+                <td>Le juge LLM considere-t-il la review conforme a <code>expected.yml</code> ?</td>
+                <td><code>"result": "PASS"</code>, avec <code>matched</code>, <code>missed</code> et <code>reasons</code>.</td>
+              </tr>
+              <tr>
+                <td><code>review-check.json</code></td>
+                <td>Les invariants mecaniques passent-ils sans interpretation LLM ?</td>
+                <td>Rule ID attendu present, interdits absents, nombre de findings sous <code>max_findings</code>.</td>
+              </tr>
+              <tr>
+                <td><code>metrics.json</code></td>
+                <td>Le skill a-t-il ete active ? Quels fichiers ont ete lus ? Quels tokens sont observes ?</td>
+                <td><code>skill_activated</code> vaut <code>code-review-back</code>, <code>files_read</code> contient la bonne regle.</td>
+              </tr>
+              <tr>
+                <td><code>trace.raw</code></td>
+                <td>Si une mesure semble bizarre, quelle est la preuve brute ?</td>
+                <td>Evenements JSONL <code>skill</code>, <code>view</code>, <code>assistant.message</code>.</td>
+              </tr>
+              <tr>
+                <td><code>expected.yml</code></td>
+                <td>Le cas teste-t-il une chose claire ? Les fichiers interdits sont-ils corrects ?</td>
+                <td><code>expected_findings</code>, <code>forbidden_findings</code>, <code>context_expectations</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          Regle de lecture : on commence par la table du gate, puis on ouvre l'artefact lie a la colonne en echec.
+          Justesse en echec : <code>review.txt</code>, <code>verdict.json</code>, <code>review-check.json</code>.
+          Selectivite en echec : <code>metrics.json</code> puis <code>trace.raw</code>.
+        </div>
       </section>
 
       <section id="contrat">
