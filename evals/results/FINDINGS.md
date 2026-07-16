@@ -1,5 +1,9 @@
 # Calibration - architecture cible code-review-back
 
+> Calibration initiale realisee avec le CLI 1.0.70. Un run ulterieur en 1.0.71 a
+> invalide une hypothese implicite de ce document : le modele n'est plus stable
+> d'un run a l'autre. Voir « Run 2026-07-16 - CLI 1.0.71 » plus bas.
+
 ## Environnement
 - Version du CLI : GitHub Copilot CLI 1.0.70.
 - Skill cible : `code-review-back`.
@@ -86,6 +90,58 @@
 - Un vrai negatif peut charger aucun fichier de regle ou seulement le fichier de domaine pour verifier l'abstention. `allowed_files_read` couvre ce cas sans autoriser de fichiers hors sujet.
 - Un controller de type `OwnerController` avec POST/PUT a ete juge trop ambigu pour un vrai negatif: il declenche naturellement `SEC-001`. Le cas clean utilise donc un controller de catalogue public en lecture seule.
 
+## Run 2026-07-16 - CLI 1.0.71 : routage automatique du modele
+
+Premier `make eval` complet apres la simplification du schema et le recentrage du
+juge sur la semantique. Resultat : gate rouge, 6 cas sur 10. Les echecs sont
+reels et ne viennent pas du harnais.
+
+### Le modele n'est plus choisi par nous
+- La trace expose un evenement `session.auto_mode_resolved` :
+  `chosenModel: gpt-5-mini`, `predictedLabel: "no_reasoning"`, `confidence: 0.64`,
+  `candidateModels: ["gpt-5-mini", "claude-haiku-4.5"]`.
+- Le CLI route donc la requete vers un modele qu'il choisit seul, par run.
+- `--model` existe mais **rejette tous les noms testes**, y compris `gpt-5-mini`
+  lui-meme (`Error: Model "gpt-5-mini" from --model flag is not available.`),
+  avec et sans `--no-remote`. Sur ce compte, l'epinglage est impossible.
+- Consequence directe : **les runs ne sont pas reproductibles**. Deux `make eval`
+  successifs peuvent mesurer deux modeles differents. C'est la limite la plus
+  serieuse du harnais aujourd'hui, et elle n'est pas dans son code.
+
+### Ce que le run mesure reellement
+- Le skill est active 10 fois sur 10 (`tool.execution_start` / `toolName: skill`).
+- Le contenu de `SKILL.md` est bien remis au modele : `tool.execution_complete`
+  contient le `detailedContent` avec les consignes `charger rules/...`.
+- Le modele ne lit pourtant les regles que **4 fois sur 10** (`view`).
+- Quand il ne les lit pas, il invente les identifiants (`SEC-ADMIN-01`,
+  `RGPD-TRACE-DCP-01`, `controller.business-logic`) ou s'abstient : C1 rend
+  `AUCUN FINDING` sur une violation `*Manager` evidente.
+- C7 lit `rules/mapstruct.rules.md` au lieu de `rules/controller.rules.md`.
+- Le chargement selectif de `SKILL.md` n'est donc pas suivi de facon fiable par
+  le modele route. C'est exactement ce que l'eval doit detecter.
+
+### Deux bugs du harnais trouves par ce run
+- `message_contains: ["acces"]` ne pouvait **jamais** matcher : le modele ecrit
+  « acces » avec un accent grave, et `acces` n'est pas une sous-chaine de la
+  forme accentuee. C5 et C8 etaient structurellement condamnes. `C8` est un cas
+  ou le skill faisait tout correctement et que l'eval rejetait a tort.
+  Corrige : `validate-review.sh` compare desormais sans diacritiques des deux
+  cotes. Un fragment ne doit pas dependre d'un accent.
+- Le prompt du juge etait incoherent sur le `rule_id` : il rejetait C5/C6/C9 pour
+  identifiant invente mais laissait passer C4 pour le meme defaut, avec un
+  `reasons` vide. Corrige : un `rule_id` absent de `REGLES` est un FAIL sans
+  exception, et `reasons` ne peut jamais etre vide.
+
+### Le juge a prouve son utilite sur ce run
+- `C8` : le juge a rendu PASS quand la validation deterministe rendait FAIL. Le
+  juge avait raison, le deterministe se trompait (bug d'accent ci-dessus). C'est
+  un faux FAIL du deterministe rattrape par le juge, en conditions reelles.
+- `C5`/`C6`/`C9` : le deterministe dit `missing: SEC-001`. Le juge dit « le
+  finding decrit correctement la violation mais cite `SEC-ADMIN-01` au lieu de
+  `SEC-001` ». Le second diagnostic est actionnable, le premier non.
+- `C10-faux-pass` : le juge a rejete la fausse conformite en citant le texte de
+  la regle injectee et en distinguant explicitement `Detection` et `Exclusion`.
+
 ## Consequences pour le vrai harnais
 - Transposable tel quel : structure `rules/`, point d'entree `skills/code-review-back/SKILL.md`, cas sous `evals/cases/`, traces sous `evals/results/`.
 - Transposable tel quel : selectivite par `context_expectations.exact_files_read` ou `allowed_files_read`.
@@ -93,4 +149,7 @@
 - Transposable tel quel : lint de coherence minimal `rules/index.md` -> fichiers -> evals actifs.
 - A adapter : enrichir `rules/*.rules.md` avec les vraies regles et completer `rules/index.md`.
 - A adapter : durcir `evals/judge.prompt.md` pour les criteres metier reels.
+- A resoudre en priorite : epingler le modele. Tant que le CLI route seul, le
+  harnais compare des runs qui n'ont pas mesure le meme systeme. Aucune
+  conclusion de tendance n'est solide avant ca.
 - Limite actuelle : input tokens indisponibles avec la surface CLI observee.

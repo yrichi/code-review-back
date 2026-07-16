@@ -645,6 +645,16 @@ context_expectations:
           Seul le juge peut la rejeter. C'est tout le cas <code>C10-faux-pass</code> : une trace figee
           qui rejoue cette review, et qui vire au rouge si le juge la laisse passer.
         </div>
+        <div class="callout">
+          <strong>Verifie en conditions reelles.</strong> Au premier run complet, le juge a rendu PASS
+          sur <code>C8</code> quand le deterministe rendait FAIL. Le juge avait raison : le fragment attendu
+          etait <code>acces</code>, le modele avait ecrit <em>acces</em> avec un accent grave, et la
+          sous-chaine ne matchait pas. Un faux FAIL du deterministe, rattrape par le juge.
+          Sur <code>C5</code>, <code>C6</code> et <code>C9</code>, le deterministe dit
+          <code>missing: SEC-001</code>; le juge dit &laquo; decrit bien la violation mais cite
+          <code>SEC-ADMIN-01</code> au lieu de <code>SEC-001</code> &raquo;. Le second diagnostic est
+          actionnable, le premier non.
+        </div>
       </section>
 
       <section id="mesures">
@@ -671,7 +681,11 @@ context_expectations:
 
       <section id="resultats">
         <h2>Calibration actuelle</h2>
-        <p>Dernier gate documente : 9 cas passent, avec un controle negatif qui echoue comme attendu.</p>
+        <p>
+          Run du 2026-07-16, CLI 1.0.71, modele route automatiquement vers <code>gpt-5-mini</code>.
+          <strong>Gate rouge : 4 cas verts sur 10.</strong> Les echecs sont reels et portent sur le skill,
+          pas sur le harnais.
+        </p>
         <div class="table-wrap">
           <table>
             <thead>
@@ -680,47 +694,79 @@ context_expectations:
                 <th>Objectif</th>
                 <th>Justesse</th>
                 <th>Selectivite</th>
+                <th>Regles lues</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>C1-services-violation</td>
                 <td>Vrai positif service</td>
-                <td><span class="status">PASS</span></td>
-                <td><span class="status">PASS</span></td>
+                <td><span class="warn">FAIL</span></td>
+                <td><span class="warn">FAIL</span></td>
+                <td><span class="warn">aucune</span></td>
               </tr>
               <tr>
                 <td>C2-clean-service</td>
                 <td>Vrai negatif service</td>
                 <td><span class="status">PASS</span></td>
                 <td><span class="status">PASS</span></td>
+                <td>services</td>
               </tr>
               <tr>
                 <td>C3-must-fail</td>
                 <td>Controle negatif du gate</td>
-                <td><span class="status">PASS attendu</span></td>
-                <td><span class="status">PASS</span></td>
+                <td><span class="status">echoue comme prevu</span></td>
+                <td><span class="warn">FAIL</span></td>
+                <td><span class="warn">aucune</span></td>
               </tr>
               <tr>
-                <td>C4-C6</td>
+                <td>C4 &agrave; C6</td>
                 <td>Cas Java reels controller, securite, DCP</td>
-                <td><span class="status">PASS</span></td>
-                <td><span class="status">PASS</span></td>
+                <td><span class="warn">FAIL</span></td>
+                <td><span class="warn">FAIL</span></td>
+                <td><span class="warn">aucune</span></td>
               </tr>
               <tr>
-                <td>C7-C9</td>
-                <td>Classes Java completes, cas medium</td>
+                <td>C7-medium-controller-clean</td>
+                <td>Vrai negatif, classe complete</td>
+                <td><span class="status">PASS</span></td>
+                <td><span class="warn">FAIL</span></td>
+                <td><span class="warn">mapstruct (mauvaise)</span></td>
+              </tr>
+              <tr>
+                <td>C8-medium-security-admin</td>
+                <td>Vrai positif securite, classe complete</td>
                 <td><span class="status">PASS</span></td>
                 <td><span class="status">PASS</span></td>
+                <td>security</td>
+              </tr>
+              <tr>
+                <td>C9-medium-dcp-service</td>
+                <td>Vrai positif DCP, classe complete</td>
+                <td><span class="warn">FAIL</span></td>
+                <td><span class="warn">FAIL</span></td>
+                <td><span class="warn">aucune</span></td>
+              </tr>
+              <tr>
+                <td>C10-faux-pass</td>
+                <td>Controle negatif du juge</td>
+                <td><span class="status">echoue comme prevu</span></td>
+                <td><span class="status">PASS</span></td>
+                <td>services (rejeu)</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <pre><code>case | justesse | selectivite | tokens
-C1-services-violation | PASS | PASS | in=null out=707
-C7-medium-controller-clean | PASS | PASS | in=null out=1238
-C8-medium-security-admin | PASS | PASS | in=null out=1287
-C9-medium-dcp-service | PASS | PASS | in=null out=1339</code></pre>
+        <div class="callout warn">
+          <strong>Ce que le rouge dit.</strong> Le skill est activé 10 fois sur 10 et reçoit bien ses
+          instructions : la trace montre le <code>detailedContent</code> de <code>SKILL.md</code> avec les
+          consignes <code>charger rules/...</code>. Mais le modele ne lit les regles que
+          <strong>4 fois sur 10</strong>. Quand il ne les lit pas, il invente les identifiants
+          (<code>SEC-ADMIN-01</code>, <code>RGPD-TRACE-DCP-01</code>, <code>controller.business-logic</code>)
+          ou s'abstient : <code>C1</code> rend <code>AUCUN FINDING</code> sur une violation
+          <code>*Manager</code> evidente. Le chargement selectif n'est pas suivi de facon fiable par le
+          modele route. C'est precisement ce que l'eval existe pour detecter.
+        </div>
       </section>
 
       <section id="extension">
@@ -754,6 +800,11 @@ C9-medium-dcp-service | PASS | PASS | in=null out=1339</code></pre>
       <section id="limites">
         <h2>Limites assumees</h2>
         <ul>
+          <li><strong>Le modele n'est pas epingle.</strong> Le CLI le choisit seul par run
+            (<code>session.auto_mode_resolved</code> &rarr; <code>gpt-5-mini</code>), et <code>--model</code>
+            rejette tous les noms testes, y compris celui que le routeur vient de choisir.
+            Deux runs peuvent mesurer deux modeles differents : le harnais donne une photo, pas une tendance.
+            C'est aujourd'hui sa limite la plus serieuse, et elle n'est pas dans son code.</li>
           <li>Les input tokens ne sont pas exposes par la surface CLI observee.</li>
           <li>Le juge LLM n'est pas l'unique oracle : le mecanique est verifie deterministiquement.</li>
           <li>Le juge reste non-deterministe : il peut produire des faux FAIL. C'est le prix du seul controle semantique disponible.</li>

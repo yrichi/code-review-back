@@ -7,6 +7,16 @@ et le versionnement suit SemVer.
 
 ## [Non publie]
 
+### Corrige
+
+- `validate-review.sh` compare les fragments `message_contains` sans diacritiques.
+  Le fragment `acces` ne pouvait jamais matcher la forme accentuee ecrite par le
+  modele: `C5` et `C8` etaient structurellement condamnes. `C8` est un cas ou le
+  skill faisait tout correctement et que l'eval rejetait a tort.
+- `judge.prompt.md`: un `rule_id` absent de `REGLES` est desormais un FAIL sans
+  exception, et `reasons` ne peut jamais etre vide. Le juge rejetait C5/C6/C9
+  pour identifiant invente mais laissait passer C4 pour le meme defaut.
+
 ### Ajoute
 
 - Rejeu de trace figee : un cas qui fournit `trace.fixture.jsonl` court-circuite
@@ -29,6 +39,13 @@ et le versionnement suit SemVer.
 - `gate.sh` nomme le composant qui satisfait un `should_fail` (`via juge`,
   `via deterministe`) : sinon un `should_fail` satisfait par le mauvais composant
   masque la mort du composant vise.
+- `FINDINGS.md`, `docs/usage.md`, `docs/INTEGRATION.md` et la presentation
+  documentent la non-reproductibilite du modele: le CLI route seul
+  (`session.auto_mode_resolved`) et `--model` rejette tous les noms testes, y
+  compris celui que le routeur vient de choisir. Deux runs peuvent mesurer deux
+  modeles differents.
+- La presentation affiche les resultats reels du run 2026-07-16 (gate rouge,
+  4 verts sur 10) au lieu d'une calibration verte devenue fausse.
 
 ### Supprime
 

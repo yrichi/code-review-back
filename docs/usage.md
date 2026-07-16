@@ -85,6 +85,25 @@ Un cas non `should_fail` doit passer les trois. Un cas `should_fail: true` doit
 echouer en justesse pour prouver que le harnais detecte les regressions; le gate
 nomme le composant qui a produit cet echec (`via juge`, `via deterministe`).
 
+## Reproductibilite : le modele n'est pas epingle
+
+Le CLI choisit seul le modele, par run. La trace expose l'arbitrage dans
+`session.auto_mode_resolved` :
+
+```json
+{"chosenModel": "gpt-5-mini", "predictedLabel": "no_reasoning",
+ "candidateModels": ["gpt-5-mini", "claude-haiku-4.5"]}
+```
+
+`--model` existe mais rejette tous les noms testes, y compris celui que le
+routeur vient de choisir. Deux `make eval` successifs peuvent donc mesurer deux
+modeles differents.
+
+Consequence pratique : un ecart entre deux runs n'est pas forcement une
+regression du skill ou des regles. Verifier `chosenModel` dans la trace avant
+toute conclusion. Tant que ce point n'est pas resolu, le harnais mesure une
+photo, pas une tendance.
+
 ## Cas de rejeu
 
 Un cas qui contient `trace.fixture.jsonl` rejoue cette trace au lieu d'appeler le

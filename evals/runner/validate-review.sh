@@ -24,7 +24,10 @@ ruby -rjson -ryaml -e '
   review = File.exist?(ARGV[1]) ? File.read(ARGV[1]) : ""
   finding_lines = review.lines.select { |l| l.strip.start_with?("- [") }
   finding_text = finding_lines.join
-  normalized_findings = finding_text.downcase
+  # Le modele ecrit "acces" ou "acces" accentue selon son humeur: un fragment ne
+  # doit pas dependre dun diacritique. On compare sans accents des deux cotes.
+  deaccent = lambda { |s| s.to_s.unicode_normalize(:nfd).gsub(/\p{Mn}/, "").downcase }
+  normalized_findings = deaccent.call(finding_text)
   expected_findings = expected["expected_findings"] || []
   max_findings = expected["max_findings"]
 
@@ -38,7 +41,7 @@ ruby -rjson -ryaml -e '
     rule_ok = finding_text.include?(rule_id)
     basename = File.basename(file)
     file_ok = file.empty? || finding_text.include?(file) || (!basename.empty? && finding_text.include?(basename))
-    fragments_ok = fragments.all? { |frag| normalized_findings.include?(frag.to_s.downcase) }
+    fragments_ok = fragments.all? { |frag| normalized_findings.include?(deaccent.call(frag)) }
     if rule_ok && file_ok && fragments_ok
       matched << rule_id
     else

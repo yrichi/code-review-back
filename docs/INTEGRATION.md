@@ -192,3 +192,9 @@ Il ne garantit pas les input tokens avec la surface observee: ils restent
 Il ne garantit pas non plus la stabilite du verdict semantique: le juge est un
 LLM, donc non-deterministe. Il peut produire des faux FAIL. C'est le prix du seul
 controle qui voit autre chose que des sous-chaines.
+
+Il ne garantit surtout pas la reproductibilite: le CLI route la requete vers un
+modele qu'il choisit seul (`session.auto_mode_resolved`), et `--model` rejette
+tous les noms testes, y compris celui que le routeur vient de choisir. Deux runs
+peuvent mesurer deux modeles differents. Avant de conclure a une regression,
+verifier `chosenModel` dans la trace.
