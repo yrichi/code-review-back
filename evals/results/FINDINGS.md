@@ -175,7 +175,33 @@ Mesures valides de ce run, avant epuisement :
   nommee. `max_findings: 1` aurait fait echouer le cas si elle etait sortie.
 - `C10-faux-pass` : echec attendu observe via le juge.
 
-## Epinglage du modele : possible, mais pas sur ce plan
+## Le modele etait la variable explicative, pas le skill
+
+Recoupement des deux campagnes apres coup, en lisant `data.model` dans les traces
+conservees. Les deux runs n'ont pas tourne sur le meme modele, et c'est
+l'auto-routeur qui en a decide seul :
+
+| Campagne | Modele route | Regles chargees | C1 |
+| --- | --- | --- | --- |
+| Run 1 | `gpt-5-mini` | 4 cas sur 10 | `AUCUN FINDING`, violation `*Manager` ratee |
+| Run 2 | `claude-haiku-4.5` | 3 sur 3 des cas joues avant le quota | `SRV-001` trouvee |
+
+La conclusion « le skill ne charge ses regles que 4 fois sur 10 » etait donc une
+propriete de `gpt-5-mini`, pas du skill. Sous `claude-haiku-4.5`, les trois cas
+reels joues (`C1`, `C11`, `C12`) ont charge le bon referentiel et passe la
+validation deterministe.
+
+Portee a ne pas surestimer : le run 2 n'a mesure que 3 cas avant l'epuisement du
+quota, et rien sur les domaines controller, securite et DCP. Le contraste est net
+mais l'echantillon est petit. Ce qui est etabli, c'est que **le modele domine la
+mesure** : attribuer un ecart au skill sans lire `data.model` dans la trace est
+une erreur d'attribution.
+
+C'est pour cela que le harnais epingle desormais le modele (`MODEL`), consigne
+celui qui a reellement tourne (`metrics.model`) et refuse la mesure en `ERROR`
+quand l'epinglage ne prend pas.
+
+## Epinglage du modele : possible, mais pas sur un plan Free
 
 Enquete menee apres le run 2, CLI 1.0.71.
 
@@ -220,9 +246,17 @@ C'etait un faux positif d'un tirage unique. Pour conclure, il faut epingler un
 modele **different** de celui que l'auto-routeur choisit, et lire `data.model` sur
 `model.call_failure` — pas se fier a l'absence d'un evenement.
 
-Consequence : l'epinglage n'est pas un chantier de code, c'est un changement de
-plan. Passer en Copilot Pro, poser `"model"` dans `~/.copilot/settings.json`,
-verifier par la methode ci-dessus, puis re-etalonner toutes les mesures.
+Consequence : l'epinglage n'est pas un chantier de code cote harnais, c'est un
+changement de plan. Le harnais est pret : `MODEL` (defaut `claude-haiku-4.5`) est
+passe en `--model` a la review et au juge, `metrics.model` consigne le modele
+reellement observe, et le gate refuse la mesure en `ERROR` si l'epinglage ne
+prend pas. Sur un plan Free, ce garde-fou fera sortir tous les cas en
+`ERROR: non mesure (cli_sans_trace)` plutot que de mesurer silencieusement autre
+chose que ce qui est demande.
+
+Reste a faire sur Pro : confirmer les noms valides avec `/model` en interactif,
+puis re-etalonner. Les mesures d'avant l'epinglage ne sont pas comparables entre
+elles.
 
 ## Consequences pour le vrai harnais
 - Transposable tel quel : structure `rules/`, point d'entree `skills/code-review-back/SKILL.md`, cas sous `evals/cases/`, traces sous `evals/results/`.

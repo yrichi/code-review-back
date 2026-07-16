@@ -32,7 +32,8 @@ ruby -rjson -ryaml -e '
   skill_dir = ARGV[2].sub(%r{/\z}, "")
   cases_dir = ARGV[3]
   results_dir = ARGV[4]
-  cases = ARGV[5..]
+  expected_model = ARGV[5]
+  cases = ARGV[6..]
   rows = []
   global_ok = true
 
@@ -71,6 +72,9 @@ ruby -rjson -ryaml -e '
     end
 
     should_fail = expected["should_fail"] == true
+    # Un cas de rejeu ne mesure pas le modele: sa review est figee. Verifier
+    # lepinglage sur sa trace naurait aucun sens.
+    replayed = File.exist?(File.join(root, cases_dir, case_id, "trace.fixture.jsonl"))
 
     # Evalue une iteration et rend son verdict brut. La logique est identique
     # quel que soit le nombre diterations: cest lagregation qui change.
@@ -88,6 +92,20 @@ ruby -rjson -ryaml -e '
         code = run_error["code"] || "inconnu"
         status = run_error["status"]
         next {"error" => "#{code}#{status ? " HTTP #{status}" : ""}"}
+      end
+
+      # Verifier que lepinglage a pris. Un --model refuse ou ignore rendrait la
+      # mesure incomparable sans rien signaler: ne jamais deduire lepinglage de
+      # labsence de session.auto_mode_resolved, lire le modele reellement appele.
+      observed_model = metrics["model"]
+      if expected_model && !expected_model.empty? && !replayed
+        if observed_model.nil?
+          seen = metrics["models_observed"]
+          detail = seen.is_a?(Array) && !seen.empty? ? "plusieurs modeles sur le meme run #{seen.inspect}" : "modele non observe dans la trace"
+          next {"error" => "epinglage non verifiable: demande #{expected_model}, #{detail}"}
+        elsif observed_model != expected_model
+          next {"error" => "epinglage non effectif: demande #{expected_model}, observe #{observed_model}"}
+        end
       end
 
       raw_pass = verdict["result"] == "PASS" && review_check["result"] == "PASS"
@@ -133,6 +151,7 @@ ruby -rjson -ryaml -e '
         "correctness" => correctness,
         "selectivity_ok" => selectivity == "PASS",
         "selectivity" => selectivity,
+        "model" => observed_model || "null",
         "tokens" => "in=#{metrics["input_tokens"] || "null"} out=#{metrics["output_tokens"] || "null"}"
       }
     end
@@ -142,7 +161,7 @@ ruby -rjson -ryaml -e '
     measured = results.reject { |r| r["error"] }
 
     if measured.empty?
-      rows << [case_id, "ERROR: non mesure (#{errors.first["error"]})", "ERROR: non mesure", "in=null out=null"]
+      rows << [case_id, "ERROR: non mesure (#{errors.first["error"]})", "ERROR: non mesure", "null", "in=null out=null"]
       global_ok = false
       next
     end
@@ -168,18 +187,18 @@ ruby -rjson -ryaml -e '
     end
 
     global_ok &&= (correctness_ok == total && selectivity_ok == total && errors.empty?)
-    rows << [case_id, correctness, selectivity, measured.last["tokens"]]
+    rows << [case_id, correctness, selectivity, measured.last["model"], measured.last["tokens"]]
   end
 
   unless context_only
-    puts "case | justesse | selectivite | tokens"
-    puts "--- | --- | --- | ---"
+    puts "case | justesse | selectivite | modele | tokens"
+    puts "--- | --- | --- | --- | ---"
     rows.each { |r| puts r.join(" | ") }
   else
-    puts "case | selectivite | tokens"
-    puts "--- | --- | ---"
-    rows.each { |r| puts [r[0], r[2], r[3]].join(" | ") }
+    puts "case | selectivite | modele | tokens"
+    puts "--- | --- | --- | ---"
+    rows.each { |r| puts [r[0], r[2], r[3], r[4]].join(" | ") }
   end
 
   exit(global_ok ? 0 : 1)
-' "$root" "$mode" "$skill_dir" "$cases_dir" "$results_dir" "${cases[@]}"
+' "$root" "$mode" "$skill_dir" "$cases_dir" "$results_dir" "${MODEL:-}" "${cases[@]}"

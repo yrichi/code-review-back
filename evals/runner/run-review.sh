@@ -89,12 +89,18 @@ $(cat "$input_path")
 \`\`\`
 PROMPT
 
-  cmd_desc="copilot -p @prompt --output-format json --silent --no-custom-instructions --no-remote --disable-builtin-mcps --log-dir $results_dir/logs"
+  # Epingler le modele quand MODEL est pose: sans lui le CLI route seul et deux
+  # runs ne mesurent pas le meme systeme.
+  model_args=()
+  [[ -n "${MODEL:-}" ]] && model_args=(--model "$MODEL")
+
+  cmd_desc="copilot -p @prompt${MODEL:+ --model $MODEL} --output-format json --silent --no-custom-instructions --no-remote --disable-builtin-mcps --log-dir $results_dir/logs"
 
   set +e
   copilot \
     -C "$root" \
     -p "$(cat "$prompt_file")" \
+    "${model_args[@]}" \
     --output-format json \
     --silent \
     --no-custom-instructions \

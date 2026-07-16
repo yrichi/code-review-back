@@ -718,12 +718,31 @@ max_findings: 1</code></pre>
       <section id="resultats">
         <h2>Calibration actuelle</h2>
         <p>
-          Derniere campagne complete : 2026-07-16, CLI 1.0.71, modele route automatiquement vers
-          <code>gpt-5-mini</code>. <strong>Gate rouge : 3 cas verts sur 10.</strong> Les echecs sont
-          reels et portent sur le skill, pas sur le harnais. <code>C11</code> et <code>C12</code>, ajoutes
-          depuis, passent tous les deux; la campagne a 12 cas n'a pas pu aller au bout, quota mensuel
-          Copilot epuise.
+          Derniere campagne complete : 2026-07-16, CLI 1.0.71, <strong>avant l'epinglage du modele</strong>.
+          Le routeur avait choisi <code>gpt-5-mini</code>. <strong>Gate rouge : 3 cas verts sur 10.</strong>
+          <code>C11</code> et <code>C12</code>, ajoutes depuis, passent tous les deux; la campagne a 12 cas
+          n'a pas pu aller au bout, quota mensuel Copilot epuise.
         </p>
+        <div class="callout warn">
+          <strong>Ces chiffres mesurent un modele, pas le skill.</strong> Une seconde campagne a ete
+          routee vers <code>claude-haiku-4.5</code> et <code>C1</code> &mdash; le meme cas, le meme skill,
+          les memes regles &mdash; est passe de <code>AUCUN FINDING</code> a la bonne detection.
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Campagne</th><th>Modele route</th><th>Regles chargees</th><th>C1</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Run 1</td><td><code>gpt-5-mini</code></td><td class="warn">4 sur 10</td><td class="warn">violation ratee</td></tr>
+                <tr><td>Run 2</td><td><code>claude-haiku-4.5</code></td><td>3 sur 3 joues</td><td>SRV-001 trouvee</td></tr>
+              </tbody>
+            </table>
+          </div>
+          Le &laquo; skill ne charge ses regles que 4 fois sur 10 &raquo; etait une propriete de
+          <code>gpt-5-mini</code>, pas du skill. Echantillon a ne pas surestimer : le run 2 n'a mesure que
+          3 cas avant le quota. Ce qui est etabli, c'est que le modele domine la mesure &mdash; d'ou
+          l'epinglage. Le tableau ci-dessous sera re-etalonne au premier run epingle.
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -861,18 +880,18 @@ max_findings: 1</code></pre>
       <section id="limites">
         <h2>Limites assumees</h2>
         <ul>
-          <li><strong>Le modele n'est pas epingle, et ce n'est pas un chantier de code.</strong>
-            Le CLI le choisit seul par run (<code>session.auto_mode_resolved</code> &rarr;
-            <code>gpt-5-mini</code>). GitHub a retire la selection manuelle de modele des plans
-            <strong>Free et Student</strong> le 24 juin 2026 : sur ces plans, <code>--model</code> rejette
-            tout nom, <code>COPILOT_MODEL</code> et la cle <code>model</code> de
-            <code>~/.copilot/settings.json</code> sont ignores silencieusement. Deux runs peuvent donc
-            mesurer deux modeles differents : le harnais donne une photo, pas une tendance.
-            Debloquer ce point demande un plan Copilot Pro, pas une ligne de code.</li>
-          <li><strong>Palliatif : <code>RUNS=&lt;k&gt;</code>.</strong> Chaque cas est joue k fois et le gate
-            rapporte <code>k/N</code>. Un cas instable sort en <code>2/3</code> au lieu de se presenter
-            comme un PASS ou un FAIL franc. Ca mesure la dispersion; ca ne garantit pas qu'on mesure
-            le meme modele d'un run a l'autre.</li>
+          <li><strong>L'epinglage du modele exige un plan Copilot Pro.</strong> GitHub a retire la
+            selection manuelle des plans <strong>Free et Student</strong> le 24 juin 2026 : sur ces plans,
+            <code>--model</code> rejette tout nom, <code>COPILOT_MODEL</code> et la cle <code>model</code>
+            de <code>~/.copilot/settings.json</code> sont ignores silencieusement. Le harnais est pret
+            (<code>MODEL</code>, defaut <code>claude-haiku-4.5</code>) et refuse de mesurer si l'epinglage
+            ne prend pas, mais le deblocage est un changement de plan, pas une ligne de code.</li>
+          <li><strong>La liste des noms de modeles n'est pas publiee.</strong> Contrairement a ce
+            qu'annonce la documentation, <code>copilot help</code> ne l'affiche pas en 1.0.71.
+            La lire avec <code>/model</code> en session interactive.</li>
+          <li><strong>Le modele reste stochastique, meme epingle.</strong> <code>RUNS=&lt;k&gt;</code>
+            rend la dispersion visible (<code>2/3</code> plutot qu'un PASS ou un FAIL franc), au prix de
+            k fois plus d'appels.</li>
           <li>Les input tokens ne sont pas exposes par la surface CLI observee.</li>
           <li>Le juge LLM n'est pas l'unique oracle : le mecanique est verifie deterministiquement.</li>
           <li>Le juge reste non-deterministe : il peut produire des faux FAIL. C'est le prix du seul controle semantique disponible.</li>

@@ -61,11 +61,17 @@ $(cat "$out_dir/review.txt")
 \`\`\`
 PROMPT
 
+# Le juge est epingle par le meme MODEL que la review: un juge qui change de
+# modele rend ses verdicts incomparables dun run a lautre.
+judge_model_args=()
+[[ -n "${MODEL:-}" ]] && judge_model_args=(--model "$MODEL")
+
 run_judge() {
   local prompt="$1"
   copilot \
     -C "$root" \
     -p "$prompt" \
+    "${judge_model_args[@]}" \
     --output-format json \
     --silent \
     --no-custom-instructions \

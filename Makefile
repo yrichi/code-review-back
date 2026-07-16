@@ -10,6 +10,12 @@ CASES ?= $(notdir $(wildcard $(CASES_DIR)/*))
 # suffit pour un diagnostic. Au-dela, le gate rapporte un ratio k/N au lieu d'un
 # PASS/FAIL, ce qui rend la variance du modele visible.
 RUNS ?= 1
+# Modele epingle. Sans lui, le CLI route seul et deux runs peuvent mesurer deux
+# modeles differents: la mesure n'est plus comparable. Requiert un plan Copilot
+# Pro ou superieur (la selection manuelle est retiree des plans Free/Student).
+# Mettre MODEL= (vide) pour laisser le routage automatique.
+# La liste des noms valides n'est pas publiee: la lire avec /model en interactif.
+MODEL ?= claude-haiku-4.5
 
 .PHONY: eval all setup lint run gate context case clean $(CASES)
 
@@ -36,19 +42,19 @@ lint:
 run: lint $(CASES)
 
 $(CASES):
-	@RUNS=$(RUNS) $(RUNNER_DIR)/run-case.sh $@
+	@RUNS=$(RUNS) MODEL="$(MODEL)" $(RUNNER_DIR)/run-case.sh $@
 
 gate:
-	@$(RUNNER_DIR)/gate.sh $(CASES)
+	@MODEL="$(MODEL)" $(RUNNER_DIR)/gate.sh $(CASES)
 
 context:
-	@$(RUNNER_DIR)/gate.sh --context-only $(CASES)
+	@MODEL="$(MODEL)" $(RUNNER_DIR)/gate.sh --context-only $(CASES)
 
 case:
 	@test -n "$(CASE)" || { echo "usage: make case CASE=<case-id>"; exit 2; }
 	@$(RUNNER_DIR)/lint-rules.sh
-	@RUNS=$(RUNS) $(RUNNER_DIR)/run-case.sh $(CASE)
-	@$(RUNNER_DIR)/gate.sh $(CASE)
+	@RUNS=$(RUNS) MODEL="$(MODEL)" $(RUNNER_DIR)/run-case.sh $(CASE)
+	@MODEL="$(MODEL)" $(RUNNER_DIR)/gate.sh $(CASE)
 
 clean:
 	@find $(RESULTS_DIR) -mindepth 1 ! -name '.gitkeep' -exec rm -rf {} +

@@ -38,14 +38,24 @@ vire au rouge si le juge la laisse passer.
 ```sh
 make eval
 make eval RUNS=5
+make eval MODEL=gpt-5-mini
 make case CASE=C1-services-violation
 make context
 make clean
 ```
 
+`MODEL` epingle le modele (defaut `claude-haiku-4.5`) et le passe en `--model` a
+la review et au juge. Sans epinglage, le CLI route seul et deux runs ne mesurent
+pas le meme systeme : la meme entree, jouee deux fois, a donne deux modeles et
+deux resultats opposes. Le gate lit le modele reellement observe dans la trace et
+refuse la mesure en `ERROR` si l'epinglage n'a pas pris. Requiert un plan Copilot
+Pro : la selection manuelle est retiree des plans Free et Student depuis le
+24 juin 2026.
+
 `RUNS` joue chaque cas plusieurs fois et fait rapporter au gate un ratio `k/N`
-au lieu d'un PASS/FAIL. Le modele etant stochastique, un run unique ne distingue
-pas un cas qui passe toujours d'un cas qui passe une fois sur trois. Defaut : 1.
+au lieu d'un PASS/FAIL. Le modele etant stochastique meme epingle, un run unique
+ne distingue pas un cas qui passe toujours d'un cas qui passe une fois sur trois.
+Defaut : 1.
 
 `make eval` est le chemin nominal : `setup`, `lint`, execution des cas, juge,
 validation deterministe, puis gate. Les cas sont decouverts automatiquement sous

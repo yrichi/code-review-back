@@ -9,6 +9,30 @@ et le versionnement suit SemVer.
 
 ### Ajoute (cadre d'evaluation)
 
+- `MODEL=<nom>` (defaut `claude-haiku-4.5`) : epingle le modele et le passe en
+  `--model` a la review et au juge. `MODEL=` vide laisse le routage automatique.
+  Requiert un plan Copilot Pro.
+- `metrics.model` et `metrics.models_observed` : le modele reellement observe
+  dans la trace. Le gate compare a `MODEL` et refuse la mesure en
+  `ERROR: epinglage non effectif` si elle ne correspond pas, ou en
+  `ERROR: epinglage non verifiable` si le modele n'est pas observable ou si
+  plusieurs modeles apparaissent sur le meme run. C'est un `ERROR` et non un
+  `FAIL`: un epinglage qui ne prend pas est un probleme de configuration, pas
+  une regression du skill. Les cas de rejeu en sont exemptes: leur review est
+  figee, elle ne mesure aucun modele.
+- `extract-trace.sh` rapporte `run_error: cli_sans_trace` quand la trace est
+  vide: le CLI n'a pas demarre (nom de modele refuse, auth). Sans cela, un
+  `--model` rejete se lisait comme un echec du skill.
+
+### Corrige (attribution des mesures)
+
+- Le diagnostic « le skill ne charge ses regles que 4 fois sur 10 » etait une
+  erreur d'attribution : les deux campagnes n'ont pas tourne sur le meme modele.
+  Le run 1 a ete route vers `gpt-5-mini` (4 chargements sur 10, `C1` rendant
+  `AUCUN FINDING`), le run 2 vers `claude-haiku-4.5` (3 chargements sur 3 des
+  cas joues, `C1` trouvant `SRV-001`). Le modele domine la mesure. `FINDINGS.md`
+  et la presentation portent le recoupement.
+
 - `RUNS=<k>` (defaut 1) : joue chaque cas k fois via `evals/runner/run-case.sh`,
   qui consigne une ligne par iteration dans `runs.jsonl`. Le gate agrege en
   `k/N`; un cas n'est vert que si toutes les iterations mesurees passent, et les

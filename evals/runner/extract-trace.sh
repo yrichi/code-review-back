@@ -54,8 +54,22 @@ ruby -rjson -e '
   files_all = []
   skill = nil
   run_error = nil
+  models_seen = []
+
+  # Une trace vide signifie que le CLI na pas demarre: nom de modele refuse,
+  # auth, binaire absent. Ce nest pas une mesure, cest une panne.
+  if events.empty?
+    run_error = {
+      "code" => "cli_sans_trace",
+      "status" => nil,
+      "message" => "aucun evenement JSON dans trace.raw; voir stderr.raw"
+    }
+  end
 
   events.each do |event|
+    # Le modele reellement utilise. Sans lui, on ne sait pas ce qui a mesure.
+    m = event.dig("data", "model") || event.dig("data", "chosenModel")
+    models_seen << m if m.is_a?(String)
     # Une panne dinfrastructure (quota, auth, reseau) nest pas un resultat de
     # mesure. On la remonte telle quelle pour que le gate ne la confonde pas
     # avec un verdict sur le skill.
@@ -116,14 +130,18 @@ ruby -rjson -e '
   }.uniq.sort
 
   trace_observed = !events.empty?
+  models_uniq = models_seen.uniq.sort
   metrics = {
     run_error: run_error,
+    model: models_uniq.length == 1 ? models_uniq.first : nil,
+    models_observed: models_uniq,
     input_tokens: input_tokens,
     output_tokens: output_tokens,
     files_read: files_reference.empty? && !trace_observed ? nil : files_reference,
     files_read_all: files_all.empty? && !trace_observed ? nil : files_all,
     skill_activated: skill,
     notes: {
+      model: models_uniq.empty? ? "NOT_FOUND: aucun champ model/chosenModel observe dans trace.raw" : (models_uniq.length == 1 ? "#{models_uniq.first} observe dans data.model / data.chosenModel" : "PLUSIEURS modeles observes sur le meme run: #{models_uniq.inspect}"),
       input_tokens: input_tokens.nil? ? "NOT_FOUND: aucun champ input/prompt tokens observe dans trace.raw" : "observe dans #{token_sources.uniq.join(", ")}",
       output_tokens: output_tokens.nil? ? "NOT_FOUND: aucun champ output/completion tokens observe dans trace.raw" : "somme des assistant.message.data.outputTokens observes",
       files_read: files_reference.empty? ? "aucun fichier de reference observe dans les appels view" : "fichiers de reference derives depuis files_read_all",

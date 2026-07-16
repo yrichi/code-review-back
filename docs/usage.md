@@ -4,6 +4,7 @@
 
 - `make eval` : chemin nominal complet.
 - `make eval RUNS=<k>` : joue chaque cas `k` fois; le gate rapporte `k/N`. Defaut 1.
+- `make eval MODEL=<nom>` : epingle le modele. Defaut `claude-haiku-4.5`.
 - `make case CASE=<case-id>` : execute un seul cas et son gate.
 - `make setup` : verifie le CLI et prepare `evals/results/`.
 - `make lint` : verifie la coherence minimale des regles.
@@ -156,42 +157,49 @@ controle negatif mentirait exactement quand on en a le plus besoin.
 
 Un cas `ERROR` ne passe jamais le gate et ne satisfait jamais un `should_fail`.
 
-## Reproductibilite : epingler le modele
+## Le modele est epingle
 
-Le CLI choisit seul le modele, par run. La trace expose l'arbitrage dans
-`session.auto_mode_resolved` :
+Sans epinglage, le CLI route seul et deux runs ne mesurent pas le meme systeme.
+Ce n'est pas theorique : la meme entree, jouee deux fois, a donne deux modeles et
+deux resultats opposes.
 
-```json
-{"chosenModel": "gpt-5-mini", "predictedLabel": "no_reasoning",
- "candidateModels": ["gpt-5-mini", "claude-haiku-4.5"]}
+`MODEL` est passe en `--model` aux appels de review et de juge :
+
+```sh
+make eval                            # MODEL=claude-haiku-4.5 par defaut
+make eval MODEL=gpt-5-mini           # comparer deux modeles
+make eval MODEL=                     # laisser le routage automatique
 ```
 
-Epingler le modele est possible et documente, mais **depend du plan Copilot** :
-GitHub a retire la selection manuelle de modele des plans **Free et Student** le
-24 juin 2026. Sur ces plans, le mode `auto` est le seul disponible.
+La selection manuelle **requiert un plan Copilot Pro ou superieur** : GitHub l'a
+retiree des plans Free et Student le 24 juin 2026. Sur un plan Free, `--model`
+echoue avec `Error: Model "<nom>" from --model flag is not available.` pour tout
+nom, `COPILOT_MODEL` et la cle `"model"` de `~/.copilot/settings.json` sont
+ignores silencieusement, et l'auto-routeur se declenche quand meme.
 
-Trois mecanismes existent, par ordre de precedence decroissante :
+La liste des noms valides n'est pas publiee et `copilot help` ne l'affiche pas :
+la lire avec `/model` en session interactive.
 
-| Mecanisme | Portee |
-| --- | --- |
-| `--model <nom>` | l'invocation |
-| `COPILOT_MODEL=<nom>` | la session |
-| cle `"model"` dans `~/.copilot/settings.json` | persistante |
+### Le gate verifie que l'epinglage a pris
 
-Sur un plan sans selection manuelle, les trois sont inertes : `--model` echoue
-avec `Error: Model "<nom>" from --model flag is not available.` pour **tout** nom,
-y compris celui que le routeur vient de choisir; `COPILOT_MODEL` et la cle
-`model` sont ignores silencieusement, l'auto-routeur se declenchant quand meme.
+`metrics.json` porte le modele reellement observe dans la trace (`model`,
+`models_observed`). Quand `MODEL` est pose, le gate compare et refuse la mesure
+si elle ne correspond pas :
 
-Consequence tant que le modele n'est pas epingle : deux `make eval` successifs
-peuvent mesurer deux modeles differents. Un ecart entre deux runs n'est pas
-forcement une regression du skill. Verifier `chosenModel` dans la trace avant
-toute conclusion; le harnais mesure alors une photo, pas une tendance.
+```
+C1 | ERROR: non mesure (epinglage non effectif: demande claude-haiku-4.5, observe gpt-5-mini)
+```
 
-Pour verifier qu'un epinglage est effectif, ne pas se fier a la seule absence de
-`session.auto_mode_resolved` : epingler un modele **different** de celui que
-l'auto-routeur choisit, et lire `data.model` sur les evenements
-`model.call_failure` ou `tool.execution_start`.
+C'est un `ERROR`, pas un `FAIL` : un epinglage qui ne prend pas est un probleme
+de configuration, pas une regression du skill.
+
+Ne jamais deduire un epinglage reussi de la seule absence de
+`session.auto_mode_resolved` : cet evenement peut manquer sur un tirage sans que
+rien ne soit epingle. Pour verifier a la main, epingler un modele **different**
+de celui que l'auto-routeur choisit et lire `data.model`.
+
+Un cas de rejeu (`trace.fixture.jsonl`) est exempte : sa review est figee, elle
+ne mesure aucun modele.
 
 ## Repetition : voir la variance
 
