@@ -4,6 +4,12 @@ set -euo pipefail
 # Lance le skill configure sur un cas et conserve toutes les sorties brutes.
 # Le script privilegie la surface JSONL du CLI quand elle existe, puis documente
 # explicitement les degradations dans meta.json.
+#
+# Si le cas fournit trace.fixture.jsonl, cette trace est rejouee telle quelle au
+# lieu d'appeler le CLI. Ce mode sert aux cas qui testent le harnais lui-meme et
+# non le modele: on ne peut pas demander a un modele de produire a la demande une
+# review volontairement fausse. Tout l'aval (extraction, metriques, selectivite,
+# validation, juge) s'execute alors sans modification.
 
 case_id="${1:-}"
 if [[ -z "$case_id" ]]; then
@@ -32,49 +38,11 @@ fi
 
 mkdir -p "$out_dir" "$root/$results_dir/logs"
 
-copilot --help > "$root/$results_dir/copilot-help.txt" 2>&1 || true
-# Important: avec ce CLI, `copilot -p --help` est interprete comme un prompt.
-printf '%s\n' 'OBSERVED: copilot -p --help is parsed as a prompt, not as help. See copilot --help for -p options.' > "$root/$results_dir/copilot-p-help.txt"
-copilot skill list --json > "$root/$results_dir/skill-list.before.json" 2>&1 || true
-copilot skill list --json > "$root/$results_dir/skill-list.after.json" 2>&1 || true
+fixture_path="$case_dir/trace.fixture.jsonl"
 
-prompt_file="$out_dir/review.prompt.txt"
-cat > "$prompt_file" <<PROMPT
-Utilise le skill $skill_name.
-
-Preuve attendue: active explicitement le skill $skill_name si le CLI le propose, lis ses instructions depuis $skill_dir/SKILL.md, puis respecte son chargement selectif.
-
-$review_instructions
-
-ENTREE:
-\`\`\`text
-$(cat "$input_path")
-\`\`\`
-PROMPT
-
-cmd_desc="copilot -p @prompt --output-format json --silent --no-custom-instructions --no-remote --disable-builtin-mcps --log-dir $results_dir/logs"
-
-set +e
-copilot \
-  -C "$root" \
-  -p "$(cat "$prompt_file")" \
-  --output-format json \
-  --silent \
-  --no-custom-instructions \
-  --no-remote \
-  --disable-builtin-mcps \
-  --log-dir "$root/$results_dir/logs" \
-  > "$out_dir/trace.raw" 2> "$out_dir/stderr.raw"
-status=$?
-set -e
-
-if [[ $status -ne 0 ]]; then
-  cp "$out_dir/stderr.raw" "$out_dir/review.txt"
-  surface="stdout_json_failed"
-  note="copilot a retourne $status; review.txt contient stderr"
-else
-  surface="stdout_json"
-  note="sortie capturee avec --output-format json"
+# Extrait review.txt depuis trace.raw. Identique pour le chemin reel et le rejeu:
+# une trace figee doit traverser exactement le meme code qu'une trace du CLI.
+extract_review() {
   ruby -rjson -e '
     final = nil
     STDIN.each_line do |line|
@@ -90,6 +58,62 @@ else
     end
     puts(final || File.read(ARGV[0]))
   ' "$out_dir/trace.raw" < "$out_dir/trace.raw" > "$out_dir/review.txt"
+}
+
+if [[ -f "$fixture_path" ]]; then
+  cp "$fixture_path" "$out_dir/trace.raw"
+  : > "$out_dir/stderr.raw"
+  status=0
+  surface="trace_fixture"
+  note="rejeu de $cases_dir/$case_id/trace.fixture.jsonl; aucun appel CLI"
+  cmd_desc="(aucun: rejeu d'une trace figee)"
+  extract_review
+else
+  copilot --help > "$root/$results_dir/copilot-help.txt" 2>&1 || true
+  # Important: avec ce CLI, `copilot -p --help` est interprete comme un prompt.
+  printf '%s\n' 'OBSERVED: copilot -p --help is parsed as a prompt, not as help. See copilot --help for -p options.' > "$root/$results_dir/copilot-p-help.txt"
+  copilot skill list --json > "$root/$results_dir/skill-list.before.json" 2>&1 || true
+  copilot skill list --json > "$root/$results_dir/skill-list.after.json" 2>&1 || true
+
+  prompt_file="$out_dir/review.prompt.txt"
+  cat > "$prompt_file" <<PROMPT
+Utilise le skill $skill_name.
+
+Preuve attendue: active explicitement le skill $skill_name si le CLI le propose, lis ses instructions depuis $skill_dir/SKILL.md, puis respecte son chargement selectif.
+
+$review_instructions
+
+ENTREE:
+\`\`\`text
+$(cat "$input_path")
+\`\`\`
+PROMPT
+
+  cmd_desc="copilot -p @prompt --output-format json --silent --no-custom-instructions --no-remote --disable-builtin-mcps --log-dir $results_dir/logs"
+
+  set +e
+  copilot \
+    -C "$root" \
+    -p "$(cat "$prompt_file")" \
+    --output-format json \
+    --silent \
+    --no-custom-instructions \
+    --no-remote \
+    --disable-builtin-mcps \
+    --log-dir "$root/$results_dir/logs" \
+    > "$out_dir/trace.raw" 2> "$out_dir/stderr.raw"
+  status=$?
+  set -e
+
+  if [[ $status -ne 0 ]]; then
+    cp "$out_dir/stderr.raw" "$out_dir/review.txt"
+    surface="stdout_json_failed"
+    note="copilot a retourne $status; review.txt contient stderr"
+  else
+    surface="stdout_json"
+    note="sortie capturee avec --output-format json"
+    extract_review
+  fi
 fi
 
 ruby -rjson -e '

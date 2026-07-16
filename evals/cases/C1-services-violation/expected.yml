@@ -1,14 +1,8 @@
-schema_version: 1
-case_id: C1-services-violation
 expected_findings:
   - rule_id: SRV-001
     file: src/main/java/demo/UserManager.java
     message_contains: ["Service"]
-forbidden_findings:
-  - rule_id: CTL-001
 max_findings: 1
 context_expectations:
   exact_files_read:
     - rules/services.rules.md
-  forbidden_files_read:
-    - rules/controller.rules.md

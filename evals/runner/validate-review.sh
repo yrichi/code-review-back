@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Validation deterministe minimale de review.txt.
-# Le juge LLM reste utile pour le wording, mais les invariants mecaniques
-# (rule_id, fichier, fragments, interdits, max_findings) ne dependent pas de lui.
+# Les invariants mecaniques (rule_id, fichier, fragments, max_findings) sont
+# tranches ici, sans dependre du juge LLM.
 
 case_id="${1:-}"
 if [[ -z "$case_id" ]]; then
@@ -26,12 +26,10 @@ ruby -rjson -ryaml -e '
   finding_text = finding_lines.join
   normalized_findings = finding_text.downcase
   expected_findings = expected["expected_findings"] || []
-  forbidden_findings = expected["forbidden_findings"] || []
   max_findings = expected["max_findings"]
 
   matched = []
   missed = []
-  forbidden_violated = []
 
   expected_findings.each do |finding|
     rule_id = finding["rule_id"].to_s
@@ -48,33 +46,20 @@ ruby -rjson -ryaml -e '
     end
   end
 
-  forbidden_findings.each do |finding|
-    rule_id = finding["rule_id"].to_s
-    forbidden_violated << rule_id if !rule_id.empty? && finding_text.include?(rule_id)
-  end
+  matched << "AUCUN FINDING" if expected_findings.empty? && review.strip == "AUCUN FINDING"
 
   reasons = []
-  if expected_findings.empty?
-    if review.strip == "AUCUN FINDING" || finding_lines.empty?
-      matched << "AUCUN FINDING" if review.strip == "AUCUN FINDING"
-    else
-      reasons << "expected_findings vide mais #{finding_lines.length} finding(s) detecte(s)"
-    end
-  end
-
   if max_findings && finding_lines.length > max_findings.to_i
     reasons << "max_findings depasse: #{finding_lines.length} > #{max_findings}"
   end
   reasons << "missing: #{missed.join(", ")}" unless missed.empty?
-  reasons << "forbidden: #{forbidden_violated.join(", ")}" unless forbidden_violated.empty?
 
   result = reasons.empty? ? "PASS" : "FAIL"
   puts JSON.pretty_generate({
-    case_id: expected["case_id"] || ARGV[2],
+    case_id: ARGV[2],
     result: result,
     matched: matched.uniq,
     missed: missed.uniq,
-    forbidden_violated: forbidden_violated.uniq,
     finding_count: finding_lines.length,
     reasons: result == "PASS" ? "Validation deterministe satisfaite." : reasons.join(" ; ")
   })

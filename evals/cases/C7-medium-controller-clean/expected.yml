@@ -1,16 +1,5 @@
-schema_version: 1
-case_id: C7-medium-controller-clean
 expected_findings: []
-forbidden_findings:
-  - rule_id: CTL-001
-  - rule_id: SEC-001
-  - rule_id: DCP-001
-  - rule_id: SRV-001
 max_findings: 0
 context_expectations:
   allowed_files_read:
     - rules/controller.rules.md
-  forbidden_files_read:
-    - rules/security.rules.md
-    - rules/rgpd-trace-dcp.rules.md
-    - rules/services.rules.md

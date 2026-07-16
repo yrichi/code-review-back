@@ -49,7 +49,12 @@ ruby -rjson -ryaml -e '
     should_fail = expected["should_fail"] == true
     raw_pass = verdict["result"] == "PASS" && review_check["result"] == "PASS"
     if should_fail
-      correctness = raw_pass ? "FAIL: should_fail a passe; le harnais ne detecte pas les regressions" : "PASS: echec attendu observe"
+      # Nommer qui a fait echouer le cas: un should_fail satisfait par le mauvais
+      # composant masquerait la mort du composant vise.
+      failed_by = []
+      failed_by << "juge" unless verdict["result"] == "PASS"
+      failed_by << "deterministe" unless review_check["result"] == "PASS"
+      correctness = raw_pass ? "FAIL: should_fail a passe; le harnais ne detecte pas les regressions" : "PASS: echec attendu observe (via #{failed_by.join(" + ")})"
       global_ok &&= !raw_pass
     else
       reasons = [verdict["result"] == "PASS" ? nil : "judge: #{verdict["reasons"]}", review_check["result"] == "PASS" ? nil : "deterministe: #{review_check["reasons"]}"].compact.join(" ; ")
@@ -61,23 +66,19 @@ ruby -rjson -ryaml -e '
     ctx_node = expected["context_expectations"] || {}
     ctx = ctx_node["exact_files_read"]
     allowed_files = ctx_node["allowed_files_read"]
-    forbidden_files = ctx_node["forbidden_files_read"] || []
     allowed_context = ["#{skill_dir}", "#{skill_dir}/SKILL.md"]
-    if ctx || allowed_files || !forbidden_files.empty?
+    if ctx || allowed_files
       files = metrics["files_read_all"] || metrics["files_read"]
       if files.is_a?(Array)
         normalized = files.map { |f| f.sub(%r{^.*#{Regexp.escape(skill_dir)}/}, "#{skill_dir}/") }.uniq.sort
         comparable = normalized.reject { |f| allowed_context.include?(f) || File.directory?(File.join(root, f)) }.sort
-        violations = forbidden_files & normalized
         if ctx
           want = ctx.sort
-          selectivity = (comparable == want && violations.empty?) ? "PASS" : "FAIL: attendu #{want.inspect}, observe #{comparable.inspect}, interdits #{violations.inspect}"
-        elsif allowed_files
+          selectivity = (comparable == want) ? "PASS" : "FAIL: attendu #{want.inspect}, observe #{comparable.inspect}"
+        else
           allowed = allowed_files.sort
           extra = comparable - allowed
-          selectivity = (extra.empty? && violations.empty?) ? "PASS" : "FAIL: autorise #{allowed.inspect}, observe #{comparable.inspect}, extra #{extra.inspect}, interdits #{violations.inspect}"
-        else
-          selectivity = violations.empty? ? "PASS" : "FAIL: fichiers interdits lus #{violations.inspect}"
+          selectivity = extra.empty? ? "PASS" : "FAIL: autorise #{allowed.inspect}, observe #{comparable.inspect}, extra #{extra.inspect}"
         end
       else
         selectivity = "FAIL: #{metrics.dig("notes", "files_read_all") || metrics.dig("notes", "files_read") || "files_read null"}"

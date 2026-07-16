@@ -1,0 +1,20 @@
+# CAS DE CONTROLE DU JUGE : ce cas DOIT echouer.
+#
+# La review rejouée est mecaniquement irreprochable: elle cite SRV-001, le bon
+# fichier et le fragment "Service", et tient dans max_findings. La validation
+# deterministe la laisse donc passer -- c'est voulu.
+#
+# Elle est pourtant semantiquement fausse: elle conclut a la conformite alors
+# qu'une violation est attendue. Seul le juge LLM peut le voir.
+#
+# Si le gate rapporte PASS ici, c'est que le juge ne juge plus rien et que le
+# seul controle semantique du harnais est mort.
+should_fail: true
+expected_findings:
+  - rule_id: SRV-001
+    file: src/main/java/demo/UserManager.java
+    message_contains: ["Service"]
+max_findings: 1
+context_expectations:
+  exact_files_read:
+    - rules/services.rules.md

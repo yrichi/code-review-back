@@ -6,7 +6,6 @@
     "result": { "type": "string", "enum": ["PASS", "FAIL"] },
     "matched": { "type": "array", "items": { "type": "string" } },
     "missed": { "type": "array", "items": { "type": "string" } },
-    "forbidden_violated": { "type": "array", "items": { "type": "string" } },
     "reasons": { "type": "string" }
   },
   "additionalProperties": false

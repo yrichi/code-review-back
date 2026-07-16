@@ -19,6 +19,25 @@ case_dir="$root/$cases_dir/$case_id"
 out_dir="$root/$results_dir/$case_id"
 mkdir -p "$out_dir"
 
+# Le juge ne peut pas distinguer une Detection d'une Exclusion sans le texte de
+# la regle. On lui fournit les references que le cas declare attendre.
+rules_block="$(ruby -ryaml -e '
+  expected = YAML.load_file(ARGV[0])
+  ctx = expected["context_expectations"] || {}
+  files = ctx["exact_files_read"] || ctx["allowed_files_read"] || []
+  files.each do |rel|
+    path = File.join(ARGV[1], rel)
+    next unless File.file?(path)
+    puts "--- #{rel} ---"
+    puts File.read(path)
+    puts
+  end
+' "$case_dir/expected.yml" "$root")"
+
+if [[ -z "${rules_block//[[:space:]]/}" ]]; then
+  rules_block="(aucune regle declaree dans context_expectations pour ce cas)"
+fi
+
 prompt_file="$out_dir/judge.prompt.txt"
 cat > "$prompt_file" <<PROMPT
 $(cat "$root/$judge_prompt_path")
@@ -29,6 +48,11 @@ $case_id
 EXPECTED_YML:
 \`\`\`yaml
 $(cat "$case_dir/expected.yml")
+\`\`\`
+
+REGLES:
+\`\`\`md
+$rules_block
 \`\`\`
 
 REVIEW:
@@ -128,7 +152,6 @@ ruby -rjson -e '
     result: "FAIL",
     matched: [],
     missed: ["judge-json-invalid"],
-    forbidden_violated: [],
     reasons: "Le juge n a pas produit de JSON parsable apres une tentative de reparation."
   })
 ' "$case_id" > "$out_dir/verdict.json"

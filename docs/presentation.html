@@ -332,6 +332,7 @@
         <a href="#workflow">Workflow</a>
         <a href="#deroule">Deroule concret</a>
         <a href="#contrat">Contrat d'un cas</a>
+        <a href="#oracles">Qui juge quoi</a>
         <a href="#mesures">Mesures</a>
         <a href="#resultats">Resultats</a>
         <a href="#extension">Ajouter une regle</a>
@@ -485,7 +486,7 @@ evals/
           </div>
           <div class="step">
             <strong>4. juge</strong>
-            <span>Compare review et attendu avec un juge LLM qui doit rendre du JSON.</span>
+            <span>Juge la validite <em>semantique</em> des findings avec un LLM qui doit rendre du JSON.</span>
           </div>
           <div class="step">
             <strong>5. gate</strong>
@@ -539,13 +540,13 @@ C8-medium-security-admin | PASS | PASS | in=null out=1287</code></pre>
               </tr>
               <tr>
                 <td><code>verdict.json</code></td>
-                <td>Le juge LLM considere-t-il la review conforme a <code>expected.yml</code> ?</td>
+                <td>Les findings sont-ils <em>semantiquement</em> vrais, ou juste bien formates ?</td>
                 <td><code>"result": "PASS"</code>, avec <code>matched</code>, <code>missed</code> et <code>reasons</code>.</td>
               </tr>
               <tr>
                 <td><code>review-check.json</code></td>
                 <td>Les invariants mecaniques passent-ils sans interpretation LLM ?</td>
-                <td>Rule ID attendu present, interdits absents, nombre de findings sous <code>max_findings</code>.</td>
+                <td>Rule ID attendu present, fichier et fragment attendus, nombre de findings sous <code>max_findings</code>.</td>
               </tr>
               <tr>
                 <td><code>metrics.json</code></td>
@@ -559,8 +560,8 @@ C8-medium-security-admin | PASS | PASS | in=null out=1287</code></pre>
               </tr>
               <tr>
                 <td><code>expected.yml</code></td>
-                <td>Le cas teste-t-il une chose claire ? Les fichiers interdits sont-ils corrects ?</td>
-                <td><code>expected_findings</code>, <code>forbidden_findings</code>, <code>context_expectations</code>.</td>
+                <td>Le cas teste-t-il une chose claire ? Le referentiel attendu est-il le bon ?</td>
+                <td><code>expected_findings</code>, <code>max_findings</code>, <code>context_expectations</code>.</td>
               </tr>
             </tbody>
           </table>
@@ -581,30 +582,68 @@ C8-medium-security-admin | PASS | PASS | in=null out=1287</code></pre>
         <div class="grid two">
           <div>
             <h3>Exemple</h3>
-            <pre><code>schema_version: 1
-case_id: C2-clean-service
-expected_findings: []
-forbidden_findings:
-  - rule_id: SRV-001
-  - rule_id: CTL-001
+            <pre><code>expected_findings: []
 max_findings: 0
 context_expectations:
   exact_files_read:
-    - rules/services.rules.md
-  forbidden_files_read:
-    - rules/controller.rules.md</code></pre>
+    - rules/services.rules.md</code></pre>
           </div>
           <div>
             <h3>Lecture</h3>
+            <p>
+              Trois axes, un champ par axe. Chaque champ peut faire echouer un cas
+              que les autres laisseraient passer.
+            </p>
             <ul>
-              <li><code>expected_findings</code> decrit ce qui doit etre trouve.</li>
-              <li><code>forbidden_findings</code> bloque les faux positifs critiques.</li>
-              <li><code>max_findings</code> evite les reviews trop bruyantes.</li>
-              <li><code>exact_files_read</code> prouve que seul le bon referentiel a ete lu.</li>
-              <li><code>allowed_files_read</code> sert aux vrais negatifs avec contexte optionnel.</li>
-              <li><code>forbidden_files_read</code> detecte le chargement inutile.</li>
+              <li><strong>Justesse</strong> : <code>expected_findings</code> decrit ce qui doit etre trouve.</li>
+              <li><strong>Bruit</strong> : <code>max_findings</code> plafonne le nombre de findings.</li>
+              <li><strong>Selectivite</strong> : <code>exact_files_read</code> prouve que seul le bon referentiel a ete lu.</li>
+              <li><code>allowed_files_read</code> remplace <code>exact_files_read</code> pour les vrais negatifs a contexte optionnel.</li>
+              <li><code>should_fail: true</code> marque le controle negatif du harnais.</li>
             </ul>
           </div>
+        </div>
+      </section>
+
+      <section id="oracles">
+        <h2>Qui juge quoi</h2>
+        <p>
+          Deux oracles, sans recouvrement volontaire. Chacun voit ce que l'autre ne peut pas voir.
+        </p>
+        <div class="grid two">
+          <div>
+            <h3>Deterministe &mdash; le mecanique</h3>
+            <p>
+              <code>review-check.json</code>. Le <code>rule_id</code>, le fichier et les fragments
+              attendus sont-ils presents ? Le nombre de findings tient-il sous <code>max_findings</code> ?
+            </p>
+            <p>
+              C'est un matcher de sous-chaines : gratuit, reproductible, et il ne se trompe jamais
+              sur ce qu'il sait faire. Mais il est <strong>aveugle au sens</strong> : il verifie que
+              les elements sont presents, jamais qu'ils ont un rapport entre eux.
+            </p>
+          </div>
+          <div>
+            <h3>Juge LLM &mdash; le semantique</h3>
+            <p>
+              <code>verdict.json</code>. Le finding affirme-t-il une violation ? La justification
+              correspond-elle a la <code>Detection</code> de la regle, ou decrit-elle une
+              <code>Exclusion</code> ? Le <code>rule_id</code> cite est-il le bon ?
+            </p>
+            <p>
+              Le juge ne recompte pas les findings : ce serait payer un appel modele pour un
+              resultat deja acquis. Il ne fait que ce que lui seul sait faire.
+            </p>
+          </div>
+        </div>
+        <div class="callout warn">
+          Pourquoi les deux : cette review passe le deterministe sans broncher.
+          <pre><code>- [SRV-001] src/main/java/demo/UserManager.java : la classe Service
+  est parfaitement nommee, aucune violation detectee, rien a signaler</code></pre>
+          Le <code>rule_id</code> est la, le fichier est la, le fragment <code>Service</code> est la,
+          il y a un seul finding. Elle conclut pourtant l'inverse exact de ce qui est attendu.
+          Seul le juge peut la rejeter. C'est tout le cas <code>C10-faux-pass</code> : une trace figee
+          qui rejoue cette review, et qui vire au rouge si le juge la laisse passer.
         </div>
       </section>
 
@@ -716,7 +755,8 @@ C9-medium-dcp-service | PASS | PASS | in=null out=1339</code></pre>
         <h2>Limites assumees</h2>
         <ul>
           <li>Les input tokens ne sont pas exposes par la surface CLI observee.</li>
-          <li>Le juge LLM n'est pas l'unique oracle : les invariants sont aussi verifies deterministiquement.</li>
+          <li>Le juge LLM n'est pas l'unique oracle : le mecanique est verifie deterministiquement.</li>
+          <li>Le juge reste non-deterministe : il peut produire des faux FAIL. C'est le prix du seul controle semantique disponible.</li>
           <li>La selectivite depend de la presence des appels <code>view</code> dans la trace.</li>
           <li>Les classes completes peuvent produire plusieurs findings sur la meme regle, ce qui doit etre explicite via <code>max_findings</code>.</li>
         </ul>

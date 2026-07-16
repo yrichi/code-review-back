@@ -88,7 +88,7 @@
 
 ## Consequences pour le vrai harnais
 - Transposable tel quel : structure `rules/`, point d'entree `skills/code-review-back/SKILL.md`, cas sous `evals/cases/`, traces sous `evals/results/`.
-- Transposable tel quel : selectivite par `context_expectations.exact_files_read`, `allowed_files_read` et `forbidden_files_read`.
+- Transposable tel quel : selectivite par `context_expectations.exact_files_read` ou `allowed_files_read`.
 - Transposable tel quel : validation deterministe des invariants mecaniques de review.
 - Transposable tel quel : lint de coherence minimal `rules/index.md` -> fichiers -> evals actifs.
 - A adapter : enrichir `rules/*.rules.md` avec les vraies regles et completer `rules/index.md`.
