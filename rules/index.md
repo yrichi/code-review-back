@@ -3,6 +3,7 @@
 | ID | Titre | Fichier | Statut |
 | --- | --- | --- | --- |
 | SRV-001 | Nom de service explicite | `rules/services.rules.md` | Active |
+| SRV-002 | Injection par constructeur | `rules/services.rules.md` | Active |
 | CTL-001 | Controleur sans logique metier directe | `rules/controller.rules.md` | Active |
 | ENT-001 | Entite persistante minimale | `rules/entities.rules.md` | Candidate |
 | MAP-001 | Mapper MapStruct explicite | `rules/mapstruct.rules.md` | Candidate |

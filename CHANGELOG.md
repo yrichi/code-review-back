@@ -7,6 +7,31 @@ et le versionnement suit SemVer.
 
 ## [Non publie]
 
+### Ajoute (cadre d'evaluation)
+
+- Distinction entre un echec mesure (`FAIL`) et une panne (`ERROR: non mesure`).
+  `extract-trace.sh` remonte `run_error` depuis `session.error` et
+  `model.call_failure`, `run-judge.sh` distingue « le juge rejette » de « le juge
+  n'a pas pu tourner », et `gate.sh` court-circuite le cas en `ERROR`. Sans cette
+  separation, un quota epuise se lisait comme une regression du skill sur tous
+  les cas, et un cas `should_fail` virait au vert : rien n'avait tourne, donc
+  rien n'avait passe, donc l'echec attendu semblait observe. Un cas `ERROR` ne
+  passe jamais le gate et ne satisfait jamais un `should_fail`.
+
+- Regle `SRV-002` (injection par constructeur) dans `rules/services.rules.md` :
+  un fichier de regles porte desormais plusieurs regles du meme domaine. C'est le
+  fichier que le skill charge, donc deux regles qu'un meme diff peut declencher
+  ensemble doivent y vivre ensemble.
+- Cas `C11-services-deux-regles` : deux regles du meme referentiel se declenchent
+  sur le meme fichier source, avec un seul fichier charge.
+- Cas `C12-services-une-regle` : meme referentiel charge, une seule des deux
+  regles doit se declencher. Mesure la discrimination entre regles voisines, et
+  montre que `max_findings` borne le bruit sans enumerer d'interdits.
+- `lint-rules.sh` decoupe les fichiers par titre `## ID - Titre` et linte chaque
+  regle separement. Il verifie en plus qu'un ID indexe existe dans un fichier,
+  qu'une regle est definie dans le fichier ou l'index la place, et qu'une eval
+  declaree existe reellement.
+
 ### Corrige
 
 - `validate-review.sh` compare les fragments `message_contains` sans diacritiques.

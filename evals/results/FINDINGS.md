@@ -142,6 +142,39 @@ reels et ne viennent pas du harnais.
 - `C10-faux-pass` : le juge a rejete la fausse conformite en citant le texte de
   la regle injectee et en distinguant explicitement `Detection` et `Exclusion`.
 
+## Run 2026-07-16 (2) - quota epuise : une panne n'est pas une mesure
+
+Campagne a 12 cas lancee apres l'ajout de `SRV-002`, `C11` et `C12`. Le quota
+mensuel Copilot s'est epuise en cours de route, apres `C10`, `C11`, `C12` et la
+review de `C1`.
+
+- Signature exacte : `session.error` avec `errorCode: quota_exceeded`,
+  `statusCode: 402`, `message: "You have exceeded your monthly quota"`; et
+  `model.call_failure` avec le meme statut. `result.usage.totalApiDurationMs`
+  vaut `0` : la requete n'a jamais atteint le modele.
+- Le harnais rapportait alors `FAIL` sur les 8 cas non joues. Une panne
+  d'infrastructure se lisait donc comme une regression du skill.
+- Pire : `C3-must-fail` est passe **au vert** (`PASS: echec attendu observe`).
+  Rien n'avait tourne, donc rien n'avait passe, donc l'echec attendu semblait
+  observe. Le controle negatif mentait exactement quand il fallait s'y fier.
+
+Corrige : `extract-trace.sh` remonte `run_error` depuis `session.error` et
+`model.call_failure`; `run-judge.sh` distingue « le juge rejette » de « le juge
+n'a pas pu tourner »; `gate.sh` court-circuite le cas en `ERROR: non mesure`. Un
+cas `ERROR` ne passe jamais le gate et ne satisfait jamais un `should_fail`.
+Verifie en rejouant les traces de quota reelles de ce run : `C3` passe de vert a
+`ERROR`.
+
+Mesures valides de ce run, avant epuisement :
+
+- `C11-services-deux-regles` : PASS / PASS. Les deux regles de
+  `rules/services.rules.md` se declenchent sur le meme fichier source, un seul
+  referentiel charge.
+- `C12-services-une-regle` : PASS / PASS. Meme referentiel charge, seule
+  `SRV-002` se declenche; `SRV-001` s'abstient correctement sur une classe bien
+  nommee. `max_findings: 1` aurait fait echouer le cas si elle etait sortie.
+- `C10-faux-pass` : echec attendu observe via le juge.
+
 ## Consequences pour le vrai harnais
 - Transposable tel quel : structure `rules/`, point d'entree `skills/code-review-back/SKILL.md`, cas sous `evals/cases/`, traces sous `evals/results/`.
 - Transposable tel quel : selectivite par `context_expectations.exact_files_read` ou `allowed_files_read`.

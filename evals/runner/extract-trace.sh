@@ -53,8 +53,26 @@ ruby -rjson -e '
   token_sources = []
   files_all = []
   skill = nil
+  run_error = nil
 
   events.each do |event|
+    # Une panne dinfrastructure (quota, auth, reseau) nest pas un resultat de
+    # mesure. On la remonte telle quelle pour que le gate ne la confonde pas
+    # avec un verdict sur le skill.
+    if event["type"] == "session.error"
+      run_error ||= {
+        "code" => event.dig("data", "errorCode") || event.dig("data", "errorType"),
+        "status" => event.dig("data", "statusCode"),
+        "message" => event.dig("data", "message").to_s[0, 200]
+      }
+    end
+    if event["type"] == "model.call_failure" && run_error.nil?
+      run_error = {
+        "code" => "model_call_failure",
+        "status" => event.dig("data", "statusCode"),
+        "message" => event.dig("data", "errorMessage").to_s[0, 200]
+      }
+    end
     if event["type"] == "assistant.message"
       out = event.dig("data", "outputTokens")
       if out.is_a?(Integer)
@@ -99,6 +117,7 @@ ruby -rjson -e '
 
   trace_observed = !events.empty?
   metrics = {
+    run_error: run_error,
     input_tokens: input_tokens,
     output_tokens: output_tokens,
     files_read: files_reference.empty? && !trace_observed ? nil : files_reference,

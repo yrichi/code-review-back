@@ -351,10 +351,10 @@
         </p>
         <div class="pill-row">
           <span class="pill">100% local hors Copilot CLI</span>
-          <span class="pill">9 cas Java</span>
+          <span class="pill">12 cas Java</span>
           <span class="pill">Juge LLM + check deterministe</span>
           <span class="pill">Selectivite des references</span>
-          <span class="pill">Gate negatif</span>
+          <span class="pill">Controles negatifs du harnais</span>
         </div>
       </section>
 
@@ -382,8 +382,8 @@ rules/
   security.rules.md
   rgpd-trace-dcp.rules.md
 evals/
-  cases/&lt;case-id&gt;/{input.diff,expected.yml}
-  runner/{run-review,extract-trace,validate-review,run-judge,gate}.sh
+  cases/&lt;case-id&gt;/{input.diff,expected.yml[,trace.fixture.jsonl]}
+  runner/{run-review,extract-trace,validate-review,run-judge,gate,lint-rules}.sh
   results/</code></pre>
       </section>
 
@@ -415,7 +415,7 @@ evals/
               </tr>
               <tr>
                 <td><code>rules/*.rules.md</code></td>
-                <td>Reference detaillee d'une regle : detection, exclusions, risque, correctif, exemples, evals.</td>
+                <td>Reference detaillee des regles d'un domaine : detection, exclusions, risque, correctif, exemples, evals. Un fichier peut porter plusieurs regles.</td>
                 <td>Quand la norme projet evolue. C'est la source de verite normative.</td>
               </tr>
               <tr>
@@ -430,7 +430,7 @@ evals/
               </tr>
               <tr>
                 <td><code>evals/cases/&lt;case-id&gt;/expected.yml</code></td>
-                <td>Oracle du cas : findings attendus, interdits, maximum, fichiers de references attendus ou interdits.</td>
+                <td>Oracle du cas : findings attendus, plafond de findings, references attendues.</td>
                 <td>Quand l'objectif du cas ou la selectivite attendue change.</td>
               </tr>
               <tr>
@@ -581,9 +581,15 @@ C8-medium-security-admin | PASS | PASS | in=null out=1287</code></pre>
         </p>
         <div class="grid two">
           <div>
-            <h3>Exemple</h3>
-            <pre><code>expected_findings: []
-max_findings: 0
+            <h3>Exemple : deux regles, un referentiel</h3>
+            <pre><code>expected_findings:
+  - rule_id: SRV-001
+    file: src/main/java/demo/UserManager.java
+    message_contains: ["Service"]
+  - rule_id: SRV-002
+    file: src/main/java/demo/UserManager.java
+    message_contains: ["Autowired"]
+max_findings: 2
 context_expectations:
   exact_files_read:
     - rules/services.rules.md</code></pre>
@@ -599,9 +605,39 @@ context_expectations:
               <li><strong>Bruit</strong> : <code>max_findings</code> plafonne le nombre de findings.</li>
               <li><strong>Selectivite</strong> : <code>exact_files_read</code> prouve que seul le bon referentiel a ete lu.</li>
               <li><code>allowed_files_read</code> remplace <code>exact_files_read</code> pour les vrais negatifs a contexte optionnel.</li>
-              <li><code>should_fail: true</code> marque le controle negatif du harnais.</li>
+              <li><code>should_fail: true</code> marque un controle du harnais lui-meme.</li>
             </ul>
+            <p>
+              L'identifiant du cas est le nom de son repertoire. Un fragment
+              <code>message_contains</code> est compare sans accent ni casse : viser un jeton
+              stable, un jeton de code de preference.
+            </p>
           </div>
+        </div>
+        <div class="callout">
+          <strong>Le cas qui mesure le plus.</strong> <code>rules/services.rules.md</code> porte deux
+          regles : le nommage (<code>SRV-001</code>) et l'injection par constructeur
+          (<code>SRV-002</code>). Un fichier de regles porte tout son domaine, parce que c'est le
+          fichier que le skill charge : deux regles qu'un meme diff peut declencher ensemble
+          doivent vivre ensemble.
+          <p>
+            <code>C11</code> verifie que les deux se declenchent sur un
+            <code>UserManager</code> fautif. <code>C12</code> est plus severe : meme referentiel
+            charge, mais la classe est correctement nommee et seule l'injection est en cause.
+            Une seule regle doit sortir.
+          </p>
+          <pre><code>expected_findings:
+  - rule_id: SRV-002
+    file: src/main/java/demo/UserService.java
+    message_contains: ["Autowired"]
+max_findings: 1</code></pre>
+          <p>
+            <code>max_findings: 1</code> interdit a <code>SRV-001</code> de sortir en plus : un
+            finding de trop depasse le plafond et le cas echoue. C'est ainsi que le bruit est
+            borne, sans jamais enumerer de regles interdites. <code>C12</code> mesure ce qui compte
+            vraiment pour un skill a references : sait-il <em>discriminer</em> entre deux regles
+            voisines qu'il vient de lire dans le meme fichier ?
+          </p>
         </div>
       </section>
 
@@ -682,9 +718,11 @@ context_expectations:
       <section id="resultats">
         <h2>Calibration actuelle</h2>
         <p>
-          Run du 2026-07-16, CLI 1.0.71, modele route automatiquement vers <code>gpt-5-mini</code>.
-          <strong>Gate rouge : 4 cas verts sur 10.</strong> Les echecs sont reels et portent sur le skill,
-          pas sur le harnais.
+          Derniere campagne complete : 2026-07-16, CLI 1.0.71, modele route automatiquement vers
+          <code>gpt-5-mini</code>. <strong>Gate rouge : 3 cas verts sur 10.</strong> Les echecs sont
+          reels et portent sur le skill, pas sur le harnais. <code>C11</code> et <code>C12</code>, ajoutes
+          depuis, passent tous les deux; la campagne a 12 cas n'a pas pu aller au bout, quota mensuel
+          Copilot epuise.
         </p>
         <div class="table-wrap">
           <table>
@@ -754,6 +792,20 @@ context_expectations:
                 <td><span class="status">PASS</span></td>
                 <td>services (rejeu)</td>
               </tr>
+              <tr>
+                <td>C11-services-deux-regles</td>
+                <td>Deux regles du meme referentiel</td>
+                <td><span class="status">PASS</span></td>
+                <td><span class="status">PASS</span></td>
+                <td>services</td>
+              </tr>
+              <tr>
+                <td>C12-services-une-regle</td>
+                <td>Discrimination entre regles voisines</td>
+                <td><span class="status">PASS</span></td>
+                <td><span class="status">PASS</span></td>
+                <td>services</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -766,6 +818,15 @@ context_expectations:
           ou s'abstient : <code>C1</code> rend <code>AUCUN FINDING</code> sur une violation
           <code>*Manager</code> evidente. Le chargement selectif n'est pas suivi de facon fiable par le
           modele route. C'est precisement ce que l'eval existe pour detecter.
+        </div>
+        <div class="callout">
+          <strong>Une panne n'est pas une mesure.</strong> Quand le CLI ne repond pas &mdash; quota
+          epuise (<code>HTTP 402</code>), auth, reseau &mdash; le cas est rapporte
+          <code>ERROR: non mesure</code>, jamais <code>FAIL</code>. Sans cette distinction, une panne
+          d'infrastructure se lit comme une regression du skill, et pire : un cas
+          <code>should_fail</code> vire au vert parce que rien n'a tourné, donc rien n'a passé. Le
+          controle negatif se mettrait a mentir au moment ou on en a le plus besoin. Un cas
+          <code>ERROR</code> ne passe jamais le gate et ne satisfait jamais un <code>should_fail</code>.
         </div>
       </section>
 

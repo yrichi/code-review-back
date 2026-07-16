@@ -48,6 +48,20 @@ ruby -rjson -ryaml -e '
 
     should_fail = expected["should_fail"] == true
     raw_pass = verdict["result"] == "PASS" && review_check["result"] == "PASS"
+
+    # Une panne dinfrastructure nest pas une mesure. Sans ce court-circuit, un
+    # quota epuise ferait passer les cas should_fail au vert (rien na tourne,
+    # donc rien na passe) et ferait passer les autres pour des regressions du
+    # skill. Un cas non mesure est ERROR, jamais PASS ni FAIL.
+    run_error = metrics["run_error"] || verdict["run_error"]
+    if run_error
+      code = run_error["code"] || "inconnu"
+      status = run_error["status"]
+      rows << [case_id, "ERROR: non mesure (#{code}#{status ? " HTTP #{status}" : ""})", "ERROR: non mesure", "in=null out=null"]
+      global_ok = false
+      next
+    end
+
     if should_fail
       # Nommer qui a fait echouer le cas: un should_fail satisfait par le mauvais
       # composant masquerait la mort du composant vise.

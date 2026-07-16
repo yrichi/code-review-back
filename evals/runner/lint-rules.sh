@@ -24,21 +24,41 @@ ruby -e '
     errors << "#{id}: fichier indexe introuvable #{row["path"]}" unless File.exist?(full)
   end
 
+  # Un fichier de regles peut en porter plusieurs: on decoupe par titre et on
+  # valide chaque regle separement. Sans ce decoupage, seule la premiere regle
+  # dun fichier serait controlee.
+  declared = []
   Dir.glob(File.join(root, "rules", "*.rules.md")).sort.each do |file|
     content = File.read(file)
-    id = content[/^##\s+([A-Z]+-\d+)\b/, 1]
     rel = file.sub(root + "/", "")
-    if id.nil?
-      errors << "#{rel}: ID de regle introuvable dans le titre"
+    sections = content.split(/^(?=##\s+[A-Z]+-\d+\b)/).reject { |s| s.strip.empty? }
+    sections = sections.select { |s| s.match?(/\A##\s+[A-Z]+-\d+\b/) }
+    if sections.empty?
+      errors << "#{rel}: aucun ID de regle trouve dans les titres"
       next
     end
-    errors << "#{rel}: #{id} absent de rules/index.md" unless indexed.key?(id)
-    if content.match?(/^Statut:\s*Active\b/)
-      evals = content[/^Evals:\s*(.+)$/i, 1].to_s.strip
+    sections.each do |section|
+      id = section[/\A##\s+([A-Z]+-\d+)\b/, 1]
+      declared << id
+      errors << "#{rel}: #{id} absent de rules/index.md" unless indexed.key?(id)
+      if indexed.key?(id) && indexed[id]["path"] != rel
+        errors << "#{rel}: #{id} indexe sur #{indexed[id]["path"]} mais defini ici"
+      end
+      next unless section.match?(/^Statut:\s*Active\b/)
+      evals = section[/^Evals:\s*(.+)$/i, 1].to_s.strip
       if evals.empty? || evals.match?(/\(aucune|none|n\/a/i)
-        errors << "#{rel}: regle Active sans eval declaree"
+        errors << "#{rel}: #{id} Active sans eval declaree"
+      end
+      evals.split(/[,;]/).map(&:strip).reject(&:empty?).each do |case_id|
+        unless Dir.exist?(File.join(root, "evals", "cases", case_id))
+          errors << "#{rel}: #{id} declare une eval inexistante: #{case_id}"
+        end
       end
     end
+  end
+
+  (indexed.keys - declared).each do |orphan|
+    errors << "rules/index.md: #{orphan} indexe mais defini dans aucun fichier de regles"
   end
 
   if errors.empty?

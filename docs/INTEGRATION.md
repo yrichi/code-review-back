@@ -53,6 +53,17 @@ context_expectations:
 L'identifiant du cas est le nom de son repertoire : il n'est pas redeclare dans
 le fichier.
 
+Le schema tient en trois axes, un champ par axe :
+
+| Axe | Champ | Question posee |
+| --- | --- | --- |
+| Justesse | `expected_findings` | Ce qui doit etre trouve l'a-t-il ete ? |
+| Bruit | `max_findings` | Combien de findings au maximum ? |
+| Selectivite | `context_expectations` | Quelles references ont ete chargees ? |
+
+Chaque axe peut faire echouer un cas que les deux autres laisseraient passer.
+`should_fail: true` s'y ajoute pour les controles du harnais lui-meme.
+
 Champs de contexte supportes, exclusifs l'un de l'autre :
 
 - `exact_files_read` : egalite stricte des fichiers de references lus. C'est le
@@ -61,9 +72,25 @@ Champs de contexte supportes, exclusifs l'un de l'autre :
   fichiers lus sont un sous-ensemble de cette liste. Utile pour les vrais
   negatifs ou le skill peut lire zero fichier ou seulement le fichier de domaine.
 
-Il n'y a volontairement pas de liste de fichiers interdits : les deux champs
-ci-dessus bornent deja l'ensemble des lectures par le haut, donc un interdit ne
-pourrait faire echouer aucun cas qu'ils laissent passer.
+Ces deux champs bornent l'ensemble des lectures par le haut, et
+`expected_findings` combine a `max_findings` borne les findings : le bruit et le
+contexte sont donc contraints sans avoir a enumerer d'interdits.
+
+### Plusieurs regles par fichier, plusieurs findings par cas
+
+Un fichier de regles porte toutes les regles de son domaine. C'est le fichier que
+le skill charge, donc deux regles qu'un meme diff peut declencher ensemble
+doivent y vivre ensemble. `rules/services.rules.md` porte `SRV-001` et `SRV-002`.
+
+Deux cas cadrent ce couple :
+
+- `C11-services-deux-regles` : les deux regles se declenchent sur le meme fichier
+  source, avec un seul referentiel charge. `max_findings: 2`.
+- `C12-services-une-regle` : le meme referentiel est charge, mais une seule regle
+  doit se declencher. `max_findings: 1` interdit a l'autre de sortir.
+
+Le second est le plus utile : il mesure la capacite du skill a discriminer entre
+deux regles voisines qu'il a lues dans le meme fichier.
 
 Le gate autorise toujours le point d'entree du skill (`skills/code-review-back`
 et `skills/code-review-back/SKILL.md`) comme contexte technique. Ces chemins ne
@@ -115,27 +142,28 @@ deterministe la laisse passer, donc seul le juge peut satisfaire son
 
 ## 4. Adapter le juge
 
-Le juge vit dans `evals/judge.prompt.md`. Il ne juge que la **semantique** : le
-mecanique (presence du `rule_id`, du fichier, des fragments, respect de
-`max_findings`) est tranche par `validate-review.sh`, de facon deterministe et
-gratuite.
+Le juge vit dans `evals/judge.prompt.md`. Il ne juge que la **semantique**. Le
+mecanique — presence du `rule_id`, du fichier, des fragments, respect de
+`max_findings` — est tranche par `validate-review.sh`, sans appel modele et sans
+erreur possible.
 
-Cette separation est deliberee. Faire revalider le mecanique par le juge coute un
-appel modele pour un resultat qu'un matcher de sous-chaines produit sans se
-tromper, et detourne le juge de la seule chose que lui seul sait faire : voir
-qu'un finding mecaniquement present est **faux**. Une review qui cite `SRV-001`
-sur le bon fichier avec le bon fragment tout en concluant « rien a signaler »
-passe le deterministe; seul le juge la rejette.
+Cette repartition tient a une propriete du deterministe : c'est un matcher de
+sous-chaines. Il verifie que les elements attendus sont presents, jamais qu'ils
+ont un rapport entre eux. Une review qui cite `SRV-001`, le bon fichier et le bon
+fragment tout en concluant « rien a signaler » le satisfait. Seul le juge la
+rejette. Symetriquement, le juge ne recompte pas les findings : ce serait payer un
+appel modele pour un resultat deja acquis.
 
 `run-judge.sh` fournit au juge le texte des regles declarees dans
 `context_expectations` : sans lui, il ne peut pas distinguer une `Detection`
-d'une `Exclusion`.
+d'une `Exclusion`, ni voir qu'un `rule_id` a ete invente.
 
 Pour un vrai skill, ajoute les criteres metier mais garde ces invariants :
 
 - sortie uniquement JSON, meme si le runner tolere les fences Markdown;
 - ne jamais revalider ce que le deterministe tranche deja;
 - ne jamais deduire un finding absent;
+- un `rule_id` absent des regles fournies est un FAIL, meme si l'analyse est juste;
 - FAIL des qu'un finding est mecaniquement present mais semantiquement faux.
 
 Le schema de sortie reste dans `evals/judge.schema.json`. Le runner valide au
@@ -184,7 +212,10 @@ Le harnais garantit seulement ce qu'il mesure :
 - verdict juge parsable;
 - validation deterministe des `rule_id`, fichiers, fragments et `max_findings`;
 - gate negatif via `should_fail`, avec le composant responsable nomme;
-- controle negatif du juge via `C10-faux-pass` et le rejeu de trace figee.
+- controle negatif du juge via `C10-faux-pass` et le rejeu de trace figee;
+- separation entre un echec mesure (`FAIL`) et une panne (`ERROR: non mesure`),
+  pour qu'une indisponibilite du CLI ne se lise jamais comme une regression du
+  skill ni ne fasse verdir un `should_fail`.
 
 Il ne garantit pas les input tokens avec la surface observee: ils restent
 `null` tant qu'aucun champ fiable n'est expose par le CLI.

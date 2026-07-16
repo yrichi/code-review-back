@@ -146,12 +146,44 @@ if [[ $status2 -eq 0 ]] && printf '%s\n' "$raw2" | ruby -e "$extract_json" > "$o
   exit 0
 fi
 
+# Distinguer "le juge a juge et rejette" de "le juge n a pas pu tourner". Une
+# panne dinfrastructure remonte en ERROR: la confondre avec un FAIL ferait passer
+# une panne pour une regression du skill.
 ruby -rjson -e '
-  puts JSON.pretty_generate({
-    case_id: ARGV[0],
-    result: "FAIL",
-    matched: [],
-    missed: ["judge-json-invalid"],
-    reasons: "Le juge n a pas produit de JSON parsable apres une tentative de reparation."
-  })
-' "$case_id" > "$out_dir/verdict.json"
+  trace = ARGV[1]
+  run_error = nil
+  if File.exist?(trace)
+    File.readlines(trace).each do |line|
+      begin
+        event = JSON.parse(line)
+      rescue JSON::ParserError
+        next
+      end
+      next unless %w[session.error model.call_failure].include?(event["type"])
+      run_error = {
+        "code" => event.dig("data", "errorCode") || event.dig("data", "errorType") || "model_call_failure",
+        "status" => event.dig("data", "statusCode"),
+        "message" => (event.dig("data", "message") || event.dig("data", "errorMessage")).to_s[0, 200]
+      }
+      break
+    end
+  end
+  if run_error
+    puts JSON.pretty_generate({
+      case_id: ARGV[0],
+      result: "ERROR",
+      matched: [],
+      missed: [],
+      run_error: run_error,
+      reasons: "Le juge n a pas pu tourner: #{run_error["code"]} (HTTP #{run_error["status"]}). #{run_error["message"]}"
+    })
+  else
+    puts JSON.pretty_generate({
+      case_id: ARGV[0],
+      result: "FAIL",
+      matched: [],
+      missed: ["judge-json-invalid"],
+      reasons: "Le juge n a pas produit de JSON parsable apres une tentative de reparation."
+    })
+  end
+' "$case_id" "$out_dir/judge.trace.raw" > "$out_dir/verdict.json"

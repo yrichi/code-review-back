@@ -28,13 +28,23 @@ Exemple a ne pas signaler: ...
 Evals: ...
 ```
 
+Un fichier peut porter plusieurs regles du meme domaine : `rules/services.rules.md`
+declare `SRV-001` et `SRV-002`. Le decoupage se fait sur le titre `## ID - Titre`,
+et chaque regle est lintee separement. Le domaine, pas la regle, decide du
+fichier : c'est le fichier qui est charge par le skill, donc deux regles qu'un
+meme diff peut declencher ensemble doivent vivre ensemble.
+
 ## Contribution
 
-1. Ajouter ou modifier une regle dans `rules/`.
+1. Ajouter ou modifier une regle dans `rules/`, dans le fichier de son domaine.
 2. Mettre a jour `rules/index.md`.
 3. Documenter la decision dans `decisions/ledger.md`.
-4. Ajouter au moins un cas sous `evals/cases/`.
+4. Ajouter au moins un cas sous `evals/cases/` et le declarer dans `Evals:`.
 5. Lancer `make eval`.
+
+`make lint` refuse une regle `Active` sans eval declaree, une regle absente de
+l'index, un ID indexe qui n'existe dans aucun fichier, et une eval declaree qui
+n'existe pas. Une regle non mesuree ne peut donc pas entrer.
 
 ## Format d'un expected.yml
 
@@ -61,10 +71,53 @@ dans le fichier.
 Pour un vrai negatif ou le skill peut lire zero ou un fichier de domaine, utiliser
 `allowed_files_read` a la place de `exact_files_read`.
 
-Il n'existe pas de liste de regles interdites. `exact_files_read` impose deja
-l'egalite stricte des fichiers lus, et `max_findings` combine a
-`expected_findings` interdit deja tout finding en trop : une liste d'interdits
-ne pourrait faire echouer aucun cas que ces champs laissent passer.
+`should_fail: true` marque un cas qui doit echouer : c'est un controle du harnais
+lui-meme, pas du skill.
+
+### Plusieurs regles sur un meme cas
+
+Un cas peut attendre plusieurs findings, y compris issus du meme fichier de
+regles. `C11-services-deux-regles` attend `SRV-001` et `SRV-002` sur le meme
+fichier source, avec un seul referentiel charge :
+
+```yaml
+expected_findings:
+  - rule_id: SRV-001
+    file: src/main/java/demo/UserManager.java
+    message_contains: ["Service"]
+  - rule_id: SRV-002
+    file: src/main/java/demo/UserManager.java
+    message_contains: ["Autowired"]
+max_findings: 2
+context_expectations:
+  exact_files_read:
+    - rules/services.rules.md
+```
+
+Le pendant est plus interessant : `C12-services-une-regle` charge le meme
+referentiel, mais une seule de ses deux regles doit se declencher. La classe est
+correctement nommee, seule l'injection est fautive :
+
+```yaml
+expected_findings:
+  - rule_id: SRV-002
+    file: src/main/java/demo/UserService.java
+    message_contains: ["Autowired"]
+max_findings: 1
+```
+
+`max_findings: 1` interdit a `SRV-001` de sortir en plus : un finding
+supplementaire depasse le plafond et le cas echoue. C'est la paire
+`expected_findings` + `max_findings` qui borne le bruit, sans qu'aucune liste de
+regles interdites soit necessaire.
+
+### Choisir un fragment `message_contains`
+
+Un fragment est compare sans accents et sans casse. Viser un jeton stable :
+
+- un jeton de code (`Autowired`, `@PreAuthorize`) est le plus sur;
+- un mot de sens stable (`log`, `service`) tient bien;
+- une tournure que le modele peut reformuler ou traduire ne tient pas.
 
 ## Garde-fous d'evaluation
 
@@ -84,6 +137,23 @@ mecanique, donc deterministe.
 Un cas non `should_fail` doit passer les trois. Un cas `should_fail: true` doit
 echouer en justesse pour prouver que le harnais detecte les regressions; le gate
 nomme le composant qui a produit cet echec (`via juge`, `via deterministe`).
+
+### Une panne n'est pas une mesure
+
+Quand le CLI ne repond pas — quota epuise (`HTTP 402`), auth, reseau — la trace
+porte un `session.error` ou un `model.call_failure`. Le cas est alors rapporte
+`ERROR: non mesure`, jamais `FAIL` :
+
+```
+C3-must-fail | ERROR: non mesure (quota_exceeded HTTP 402) | ERROR: non mesure
+```
+
+La distinction n'est pas cosmetique. Sans elle, une panne se lit comme une
+regression du skill sur tous les cas, et un cas `should_fail` vire au **vert** :
+rien n'a tourne, donc rien n'a passe, donc l'echec attendu semble observe. Le
+controle negatif mentirait exactement quand on en a le plus besoin.
+
+Un cas `ERROR` ne passe jamais le gate et ne satisfait jamais un `should_fail`.
 
 ## Reproductibilite : le modele n'est pas epingle
 

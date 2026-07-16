@@ -1,0 +1,21 @@
+diff --git a/src/main/java/demo/UserService.java b/src/main/java/demo/UserService.java
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/src/main/java/demo/UserService.java
+@@ -0,0 +1,14 @@
++package demo;
++
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.stereotype.Service;
++
++@Service
++public class UserService {
++
++  @Autowired
++  private UserRepository repository;
++
++  public void createUser(String email) {
++    repository.save(new User(email));
++  }
++}

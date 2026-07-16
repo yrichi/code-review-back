@@ -1,0 +1,13 @@
+# Le meme referentiel porte deux regles, mais une seule s applique: la classe est
+# correctement nommee `*Service`, seule l injection par champ est fautive.
+# `max_findings: 1` interdit a SRV-001 de se declencher en plus: s il sort, la
+# review depasse le plafond et le cas echoue. C est ce qui rend une liste de
+# regles interdites inutile.
+expected_findings:
+  - rule_id: SRV-002
+    file: src/main/java/demo/UserService.java
+    message_contains: ["Autowired"]
+max_findings: 1
+context_expectations:
+  exact_files_read:
+    - rules/services.rules.md
